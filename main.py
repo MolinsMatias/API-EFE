@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
+from typing import List, Tuple, Optional, Dict
 
 app = FastAPI()
 
@@ -19,7 +20,7 @@ DESTINOS = {
     13: "Rancagua"
 }
 
-def scrape_itinerarios(html, tipo_tarifa: str):
+def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
     soup = BeautifulSoup(html, 'html.parser')
     itinerarios = []
     tarifa_label = f"Salidas Tarifa {tipo_tarifa}"
@@ -45,9 +46,12 @@ def scrape_itinerarios(html, tipo_tarifa: str):
         })
     return itinerarios
 
-def obtener_todos_los_viajes(origen: int, destino: int):
+def obtener_todos_los_viajes(origen: int, destino: int) -> Tuple[Optional[List[Dict]], Optional[str]]:
     fecha_hoy = datetime.now().strftime("%Y-%m-%d")
-    url = f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
+    url = (
+        f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
+        f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
+    )
     response = requests.get(url)
     if response.status_code != 200:
         return None, "Error al obtener datos"
@@ -75,9 +79,12 @@ def itinerarios_proximos(
     origen: int = Query(6, description="Código de la estación de origen"),
     destino: int = Query(3, description="Código de la estación de destino")
 ):
-    hora_actual = datetime.now()
-    fecha_hoy = hora_actual.strftime("%Y-%m-%d")
-    url = f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
+    ahora = datetime.now()
+    fecha_hoy = ahora.strftime("%Y-%m-%d")
+    url = (
+        f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
+        f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
+    )
 
     response = requests.get(url)
     if response.status_code != 200:
@@ -86,8 +93,7 @@ def itinerarios_proximos(
     baja = scrape_itinerarios(response.text, "Baja")
     alta = scrape_itinerarios(response.text, "Alta")
 
-    def filtrar_proximos(lista):
-        ahora = datetime.now()
+    def filtrar_proximos(lista: List[Dict]) -> List[Dict]:
         proximos = []
         for item in lista:
             try:
@@ -96,12 +102,12 @@ def itinerarios_proximos(
                 )
                 if hora_salida >= ahora:
                     proximos.append(item)
-            except:
+            except ValueError:
                 continue
         return sorted(proximos, key=lambda x: x['salida'])[:4]
 
     return {
-        "hora_actual": hora_actual.strftime("%H:%M"),
+        "hora_actual": ahora.strftime("%H:%M"),
         "fecha": fecha_hoy,
         "origen": DESTINOS.get(origen, "Desconocido"),
         "destino": DESTINOS.get(destino, "Desconocido"),
