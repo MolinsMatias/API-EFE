@@ -174,6 +174,20 @@ def hora_a_texto(hora_str: str) -> str:
 
     return f"{texto_hora} {texto_minutos} {periodo}"
 
+def minutos_a_texto(min_str):
+    mapa_numeros = {
+        "1": "un", "2": "dos", "3": "tres", "4": "cuatro", "5": "cinco",
+        "6": "seis", "7": "siete", "8": "ocho", "9": "nueve", "10": "diez",
+        "11": "once", "12": "doce", "13": "trece", "14": "catorce", "15": "quince",
+        "16": "dieciséis", "17": "diecisiete", "18": "dieciocho", "19": "diecinueve", "20": "veinte"
+    }
+
+    num = min_str.replace("min", "").strip()
+    if num in mapa_numeros:
+        return f"{mapa_numeros[num]} minutos"
+    else:
+        return f"{num} minutos"
+
 
 @app.get("/itinerarios/ahora/siri")
 def itinerarios_siri(
@@ -205,10 +219,16 @@ def itinerarios_siri(
         mensaje = f"Son las {hora_a_texto(ahora.strftime('%H:%M'))}. "
         for i, tren in enumerate(proximos):
             hora_salida_texto = hora_a_texto(tren['salida'])
+
             if i == 0:
                 mensaje += f"El tren próximo es a las {hora_salida_texto}. "
             else:
                 mensaje += f"Luego viene el de las {hora_salida_texto}. "
+
+        # Solo al final, usamos la duración del primer tren (o puedes elegir otro)
+        duracion_texto = minutos_a_texto(proximos[0]['duracion'])
+        mensaje += f"Recuerda que la duración del viaje es de {duracion_texto}."
+
 
     return {
         "hora_actual": ahora.strftime("%H:%M"),
