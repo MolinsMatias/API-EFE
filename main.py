@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup
 from typing import List, Tuple, Optional, Dict
 from datetime import datetime, timedelta
 
-
-
 app = FastAPI()
 
 DESTINOS = {
@@ -49,7 +47,7 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
     return itinerarios
 
 def obtener_todos_los_viajes(origen: int, destino: int) -> Tuple[Optional[List[Dict]], Optional[str]]:
-    fecha_hoy = datetime.now().strftime("%Y-%m-%d")
+    fecha_hoy = (datetime.utcnow() - timedelta(hours=4)).strftime("%Y-%m-%d")
     url = (
         f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
         f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
@@ -120,3 +118,42 @@ def itinerarios_proximos(
         }
     }
 
+@app.get("/itinerarios/ahora/siri")
+def itinerarios_siri(
+    origen: int = Query(6, description="Código de la estación de origen"),
+    destino: int = Query(3, description="Código de la estación de destino")
+):
+    ahora = datetime.utcnow() - timedelta(hours=4)
+    fecha_hoy = ahora.strftime("%Y-%m-%d")
+    
+    itinerarios, error = obtener_todos_los_viajes(origen, destino)
+    if error or itinerarios is None:
+        return JSONResponse(status_code=500, content={"error": "No se pudo obtener la página"})
+    
+    proximos = []
+    for item in itinerarios:
+        try:
+            hora_salida = datetime.strptime(item['salida'], "%H:%M").replace(
+                year=ahora.year, month=ahora.month, day=ahora.day
+            )
+            if hora_salida >= ahora:
+                proximos.append(item)
+        except:
+            continue
+    proximos = sorted(proximos, key=lambda x: x['salida'])[:4]
+    
+    if not proximos:
+        mensaje = f"No hay trenes próximos desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')} en este momento."
+    else:
+        mensaje = f"Son las {ahora.strftime('%H:%M')}. Próximos trenes desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')}: "
+        for tren in proximos:
+            mensaje += f"Tren {tren['viaje']} sale a las {tren['salida']} y llega a las {tren['llegada']}. "
+
+    return {
+        "hora_actual": ahora.strftime("%H:%M"),
+        "fecha": fecha_hoy,
+        "origen": DESTINOS.get(origen, "Desconocido"),
+        "destino": DESTINOS.get(destino, "Desconocido"),
+        "mensaje": mensaje.strip(),
+        "proximos": proximos
+    }
