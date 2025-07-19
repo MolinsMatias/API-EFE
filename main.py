@@ -180,7 +180,7 @@ def itinerarios_siri(
     origen: int = Query(6, description="Código de la estación de origen"),
     destino: int = Query(3, description="Código de la estación de destino")
 ):
-    ahora = datetime.now()
+    ahora = datetime.utcnow() - timedelta(hours=4)
     fecha_hoy = ahora.strftime("%Y-%m-%d")
     
     itinerarios = obtener_todos_los_viajes(origen, destino)[0]
