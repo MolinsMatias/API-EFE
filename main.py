@@ -2,8 +2,10 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
 from typing import List, Tuple, Optional, Dict
+from datetime import datetime, timedelta
+
+
 
 app = FastAPI()
 
@@ -79,7 +81,7 @@ def itinerarios_proximos(
     origen: int = Query(6, description="Código de la estación de origen"),
     destino: int = Query(3, description="Código de la estación de destino")
 ):
-    ahora = datetime.now()
+    ahora = (datetime.utcnow() - timedelta(hours=4)).time()
     fecha_hoy = ahora.strftime("%Y-%m-%d")
     url = (
         f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
