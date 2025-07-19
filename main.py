@@ -81,8 +81,9 @@ def itinerarios_proximos(
     origen: int = Query(6, description="Código de la estación de origen"),
     destino: int = Query(3, description="Código de la estación de destino")
 ):
-    ahora = (datetime.utcnow() - timedelta(hours=4)).time()
+    ahora = datetime.utcnow() - timedelta(hours=4)
     fecha_hoy = ahora.strftime("%Y-%m-%d")
+
     url = (
         f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
         f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
@@ -118,3 +119,4 @@ def itinerarios_proximos(
             "Alta": filtrar_proximos(alta)
         }
     }
+
