@@ -202,9 +202,13 @@ def itinerarios_siri(
     if not proximos:
         mensaje = f"No hay trenes próximos desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')} en este momento."
     else:
-        mensaje = f"Son las {hora_a_texto(ahora.strftime('%H:%M'))}. Próximos trenes desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')}: "
-        for tren in proximos:
-            mensaje += f"Tren {tren['viaje']} sale a las {hora_a_texto(tren['salida'])} y llega a las {hora_a_texto(tren['llegada'])}. "
+        mensaje = f"Son las {hora_a_texto(ahora.strftime('%H:%M'))}. "
+        for i, tren in enumerate(proximos):
+            hora_salida_texto = hora_a_texto(tren['salida'])
+            if i == 0:
+                mensaje += f"El tren próximo es a las {hora_salida_texto}. "
+            else:
+                mensaje += f"Luego viene el de las {hora_salida_texto}. "
 
     return {
         "hora_actual": ahora.strftime("%H:%M"),
