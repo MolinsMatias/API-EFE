@@ -117,17 +117,74 @@ def itinerarios_proximos(
             "Alta": filtrar_proximos(alta)
         }
     }
+    
+def hora_a_texto(hora_str: str) -> str:
+    """
+    Convierte una hora en formato 'HH:MM' a texto hablado en español,
+    ejemplo: "16:58" -> "cuatro cincuenta y ocho de la tarde"
+    """
+    horas_24 = int(hora_str[:2])
+    minutos = int(hora_str[3:])
+
+    # Pasar a formato 12h
+    if horas_24 == 0:
+        horas_12 = 12
+        periodo = "de la madrugada"
+    elif 1 <= horas_24 < 12:
+        horas_12 = horas_24
+        periodo = "de la mañana"
+    elif horas_24 == 12:
+        horas_12 = 12
+        periodo = "del mediodía"
+    elif 13 <= horas_24 < 20:
+        horas_12 = horas_24 - 12
+        periodo = "de la tarde"
+    else:
+        horas_12 = horas_24 - 12
+        periodo = "de la noche"
+
+    # Números en texto para horas (1-12)
+    numeros_horas = [
+        "doce", "una", "dos", "tres", "cuatro", "cinco", "seis",
+        "siete", "ocho", "nueve", "diez", "once", "doce"
+    ]
+    texto_hora = numeros_horas[horas_12 % 12]
+
+    # Función para convertir minutos a texto simple
+    if minutos == 0:
+        texto_minutos = "en punto"
+    elif minutos < 10:
+        texto_minutos = f"cero {minutos}"
+    elif minutos < 20:
+        # Decenas especiales 10-19
+        especiales = {
+            10: "diez", 11: "once", 12: "doce", 13: "trece", 14: "catorce",
+            15: "quince", 16: "dieciséis", 17: "diecisiete", 18: "dieciocho",
+            19: "diecinueve"
+        }
+        texto_minutos = especiales.get(minutos, str(minutos))
+    else:
+        decenas = ["", "", "veinte", "treinta", "cuarenta", "cincuenta"]
+        d = minutos // 10
+        u = minutos % 10
+        if u == 0:
+            texto_minutos = decenas[d]
+        else:
+            texto_minutos = f"{decenas[d]} y {u}"
+
+    return f"{texto_hora} {texto_minutos} {periodo}"
+
 
 @app.get("/itinerarios/ahora/siri")
 def itinerarios_siri(
     origen: int = Query(6, description="Código de la estación de origen"),
     destino: int = Query(3, description="Código de la estación de destino")
 ):
-    ahora = datetime.utcnow() - timedelta(hours=4)
+    ahora = datetime.now()
     fecha_hoy = ahora.strftime("%Y-%m-%d")
     
-    itinerarios, error = obtener_todos_los_viajes(origen, destino)
-    if error or itinerarios is None:
+    itinerarios = obtener_todos_los_viajes(origen, destino)[0]
+    if itinerarios is None:
         return JSONResponse(status_code=500, content={"error": "No se pudo obtener la página"})
     
     proximos = []
@@ -145,9 +202,9 @@ def itinerarios_siri(
     if not proximos:
         mensaje = f"No hay trenes próximos desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')} en este momento."
     else:
-        mensaje = f"Son las {ahora.strftime('%H:%M')}. Próximos trenes desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')}: "
+        mensaje = f"Son las {hora_a_texto(ahora.strftime('%H:%M'))}. Próximos trenes desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')}: "
         for tren in proximos:
-            mensaje += f"Tren {tren['viaje']} sale a las {tren['salida']} y llega a las {tren['llegada']}. "
+            mensaje += f"Tren {tren['viaje']} sale a las {hora_a_texto(tren['salida'])} y llega a las {hora_a_texto(tren['llegada'])}. "
 
     return {
         "hora_actual": ahora.strftime("%H:%M"),
@@ -157,3 +214,4 @@ def itinerarios_siri(
         "mensaje": mensaje.strip(),
         "proximos": proximos
     }
+
