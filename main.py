@@ -1,11 +1,23 @@
-from fastapi import FastAPI, Query
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 import requests
 from bs4 import BeautifulSoup
 from typing import List, Tuple, Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    from backports.zoneinfo import ZoneInfo # Para versiones antiguas de python si fuera necesario
 
 app = FastAPI()
+
+# Configuración de plantillas (carpeta 'templates')
+templates = Jinja2Templates(directory="templates")
+
+# Configuración de Zona Horaria Chile
+TZ_CHILE = ZoneInfo("America/Santiago")
 
 DESTINOS = {
     1: "Estación Central",
@@ -25,17 +37,25 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
     itinerarios = []
     tarifa_label = f"Salidas Tarifa {tipo_tarifa}"
     tabla = soup.find('p', string=tarifa_label)
+    
     if not tabla:
         return []
+        
     tabla = tabla.find_next('table')
+    if not tabla or not tabla.tbody:
+        return []
+
     rows = tabla.tbody.find_all('tr')
 
     for i, row in enumerate(rows, 1):
         cols = row.find_all('td')
+        if not cols: continue
+        
         salida = cols[0].get_text(strip=True).replace('🕒', '')
         llegada = cols[1].get_text(strip=True).replace('🕒', '')
         duracion = cols[2].get_text(strip=True).replace('⌛', '')
         valor = cols[3].get_text(strip=True).replace('$', '').replace('.', '').strip()
+        
         itinerarios.append({
             'viaje': i,
             'salida': salida,
@@ -47,23 +67,92 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
     return itinerarios
 
 def obtener_todos_los_viajes(origen: int, destino: int) -> Tuple[Optional[List[Dict]], Optional[str]]:
-    fecha_hoy = (datetime.utcnow() - timedelta(hours=3)).strftime("%Y-%m-%d")
+    # Usamos la hora de Chile para la consulta a EFE
+    ahora_chile = datetime.now(TZ_CHILE)
+    fecha_consulta = ahora_chile.strftime("%Y-%m-%d")
+    
     url = (
         f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
-        f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
+        f"&ida=1&origen={origen}&destino={destino}&salida={fecha_consulta}&hran=1"
     )
-    response = requests.get(url)
-    if response.status_code != 200:
-        return None, "Error al obtener datos"
+    
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200:
+            return None, "Error al obtener datos de EFE"
+    except requests.RequestException:
+        return None, "Error de conexión con EFE"
     
     baja = scrape_itinerarios(response.text, "Baja")
     alta = scrape_itinerarios(response.text, "Alta")
-    return baja + alta, None
+    
+    # Ordenar por hora de salida
+    todos = sorted(baja + alta, key=lambda x: x['salida'])
+    return todos, None
+
+# --- UTILIDADES DE TEXTO ---
+
+def hora_a_texto(hora_str: str) -> str:
+    horas_24 = int(hora_str[:2])
+    minutos = int(hora_str[3:])
+
+    if horas_24 == 0:
+        periodo = "de la madrugada"
+        horas_12 = 12
+    elif 1 <= horas_24 < 12:
+        periodo = "de la mañana"
+        horas_12 = horas_24
+    elif horas_24 == 12:
+        periodo = "del mediodía"
+        horas_12 = 12
+    elif 13 <= horas_24 < 20:
+        periodo = "de la tarde"
+        horas_12 = horas_24 - 12
+    else:
+        periodo = "de la noche"
+        horas_12 = horas_24 - 12
+
+    numeros_horas = [
+        "doce", "una", "dos", "tres", "cuatro", "cinco", "seis",
+        "siete", "ocho", "nueve", "diez", "once", "doce"
+    ]
+    # Ajuste índice: 1->una (índice 1), 12->doce (índice 0 o 12)
+    texto_hora = numeros_horas[horas_12 % 12] 
+    if horas_12 == 12: texto_hora = "doce" # Corrección rápida para array
+
+    if minutes == 0:
+        texto_minutos = "en punto"
+    elif minutes < 10:
+        texto_minutos = f"cero {minutos}"
+    elif minutes <= 15:
+        especiales = {10:"diez", 11:"once", 12:"doce", 13:"trece", 14:"catorce", 15:"quince"}
+        texto_minutos = especiales.get(minutos, str(minutos))
+    elif minutes < 20:
+        texto_minutos = f"dieci{['seis','siete','ocho','nueve'][minutos-16]}"
+    elif minutes == 30:
+        texto_minutos = "y media"
+    else:
+        decenas = ["", "", "veinte", "treinta", "cuarenta", "cincuenta"]
+        d = minutes // 10
+        u = minutes % 10
+        if u == 0:
+            texto_minutos = decenas[d]
+        else:
+            # Ajuste simple: "veintiuno" vs "veinte y uno" (coloquial)
+            texto_minutos = f"{decenas[d]} y {u}"
+
+    return f"{texto_hora} {texto_minutos} {periodo}"
+
+def minutos_a_texto(min_str):
+    num = min_str.replace("min", "").strip()
+    return f"{num} minutos"
+
+# --- ENDPOINTS ---
 
 @app.get("/itinerarios")
 def itinerarios_completos(
-    origen: int = Query(6, description="Código de la estación de origen"),
-    destino: int = Query(3, description="Código de la estación de destino")
+    origen: int = Query(6),
+    destino: int = Query(3)
 ):
     todos, error = obtener_todos_los_viajes(origen, destino)
     if error:
@@ -76,166 +165,86 @@ def itinerarios_completos(
 
 @app.get("/itinerarios/ahora")
 def itinerarios_proximos(
-    origen: int = Query(6, description="Código de la estación de origen"),
-    destino: int = Query(3, description="Código de la estación de destino")
+    origen: int = Query(6),
+    destino: int = Query(3)
 ):
-    ahora = datetime.utcnow() - timedelta(hours=3)
-    fecha_hoy = ahora.strftime("%Y-%m-%d")
+    ahora = datetime.now(TZ_CHILE)
+    todos, error = obtener_todos_los_viajes(origen, destino)
+    
+    if error:
+        return JSONResponse(status_code=500, content={"error": error})
 
-    url = (
-        f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
-        f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
-    )
+    proximos = []
+    for item in todos:
+        try:
+            h_str, m_str = item['salida'].split(':')
+            hora_salida = ahora.replace(hour=int(h_str), minute=int(m_str), second=0, microsecond=0)
+            
+            # Si la hora ya pasó hoy, ignorar
+            if hora_salida >= ahora:
+                proximos.append(item)
+        except ValueError:
+            continue
 
-    response = requests.get(url)
-    if response.status_code != 200:
-        return JSONResponse(status_code=500, content={"error": "No se pudo obtener la página"})
-
-    baja = scrape_itinerarios(response.text, "Baja")
-    alta = scrape_itinerarios(response.text, "Alta")
-
-    def filtrar_proximos(lista: List[Dict]) -> List[Dict]:
-        proximos = []
-        for item in lista:
-            try:
-                hora_salida = datetime.strptime(item['salida'], "%H:%M").replace(
-                    year=ahora.year, month=ahora.month, day=ahora.day
-                )
-                if hora_salida >= ahora:
-                    proximos.append(item)
-            except ValueError:
-                continue
-        return sorted(proximos, key=lambda x: x['salida'])[:4]
+    # Filtramos para devolver (máximo 4)
+    proximos_baja = [p for p in proximos if p['tarifa'] == 'Baja'][:4]
+    proximos_alta = [p for p in proximos if p['tarifa'] == 'Alta'][:4]
 
     return {
         "hora_actual": ahora.strftime("%H:%M"),
-        "fecha": fecha_hoy,
+        "fecha": ahora.strftime("%Y-%m-%d"),
         "origen": DESTINOS.get(origen, "Desconocido"),
         "destino": DESTINOS.get(destino, "Desconocido"),
         "proximos": {
-            "Baja": filtrar_proximos(baja),
-            "Alta": filtrar_proximos(alta)
+            "Baja": proximos_baja,
+            "Alta": proximos_alta,
+            "Todos": proximos[:5] # Lista combinada para la vista visual
         }
     }
-    
-def hora_a_texto(hora_str: str) -> str:
-    """
-    Convierte una hora en formato 'HH:MM' a texto hablado en español,
-    ejemplo: "16:58" -> "cuatro cincuenta y ocho de la tarde"
-    """
-    horas_24 = int(hora_str[:2])
-    minutos = int(hora_str[3:])
-
-    # Pasar a formato 12h
-    if horas_24 == 0:
-        horas_12 = 12
-        periodo = "de la madrugada"
-    elif 1 <= horas_24 < 12:
-        horas_12 = horas_24
-        periodo = "de la mañana"
-    elif horas_24 == 12:
-        horas_12 = 12
-        periodo = "del mediodía"
-    elif 13 <= horas_24 < 20:
-        horas_12 = horas_24 - 12
-        periodo = "de la tarde"
-    else:
-        horas_12 = horas_24 - 12
-        periodo = "de la noche"
-
-    # Números en texto para horas (1-12)
-    numeros_horas = [
-        "doce", "una", "dos", "tres", "cuatro", "cinco", "seis",
-        "siete", "ocho", "nueve", "diez", "once", "doce"
-    ]
-    texto_hora = numeros_horas[horas_12 % 12]
-
-    # Función para convertir minutos a texto simple
-    if minutos == 0:
-        texto_minutos = "en punto"
-    elif minutos < 10:
-        texto_minutos = f"cero {minutos}"
-    elif minutos < 20:
-        # Decenas especiales 10-19
-        especiales = {
-            10: "diez", 11: "once", 12: "doce", 13: "trece", 14: "catorce",
-            15: "quince", 16: "dieciséis", 17: "diecisiete", 18: "dieciocho",
-            19: "diecinueve"
-        }
-        texto_minutos = especiales.get(minutos, str(minutos))
-    else:
-        decenas = ["", "", "veinte", "treinta", "cuarenta", "cincuenta"]
-        d = minutos // 10
-        u = minutos % 10
-        if u == 0:
-            texto_minutos = decenas[d]
-        else:
-            texto_minutos = f"{decenas[d]} y {u}"
-
-    return f"{texto_hora} {texto_minutos} {periodo}"
-
-def minutos_a_texto(min_str):
-    mapa_numeros = {
-        "1": "un", "2": "dos", "3": "tres", "4": "cuatro", "5": "cinco",
-        "6": "seis", "7": "siete", "8": "ocho", "9": "nueve", "10": "diez",
-        "11": "once", "12": "doce", "13": "trece", "14": "catorce", "15": "quince",
-        "16": "dieciséis", "17": "diecisiete", "18": "dieciocho", "19": "diecinueve", "20": "veinte"
-    }
-
-    num = min_str.replace("min", "").strip()
-    if num in mapa_numeros:
-        return f"{mapa_numeros[num]} minutos"
-    else:
-        return f"{num} minutos"
-
 
 @app.get("/itinerarios/ahora/siri")
-def itinerarios_siri(
-    origen: int = Query(6, description="Código de la estación de origen"),
-    destino: int = Query(3, description="Código de la estación de destino")
-):
-    ahora = datetime.utcnow() - timedelta(hours=3)
-    fecha_hoy = ahora.strftime("%Y-%m-%d")
+def itinerarios_siri(origen: int = Query(6), destino: int = Query(3)):
+    data = itinerarios_proximos(origen, destino)
+    if isinstance(data, JSONResponse): return data
     
-    itinerarios = obtener_todos_los_viajes(origen, destino)[0]
-    if itinerarios is None:
-        return JSONResponse(status_code=500, content={"error": "No se pudo obtener la página"})
+    lista = data['proximos']['Todos']
+    ahora_str = data['hora_actual']
     
-    proximos = []
-    for item in itinerarios:
-        try:
-            hora_salida = datetime.strptime(item['salida'], "%H:%M").replace(
-                year=ahora.year, month=ahora.month, day=ahora.day
-            )
-            if hora_salida >= ahora:
-                proximos.append(item)
-        except:
-            continue
-    proximos = sorted(proximos, key=lambda x: x['salida'])[:4]
-    
-    if not proximos:
-        mensaje = f"No hay trenes próximos desde {DESTINOS.get(origen, 'origen desconocido')} a {DESTINOS.get(destino, 'destino desconocido')} en este momento."
+    if not lista:
+        mensaje = f"No hay trenes próximos desde {data['origen']} a {data['destino']} por hoy."
     else:
-        mensaje = f"Son las {hora_a_texto(ahora.strftime('%H:%M'))}. "
-        for i, tren in enumerate(proximos):
-            hora_salida_texto = hora_a_texto(tren['salida'])
-
-            if i == 0:
-                mensaje += f"El tren próximo es a las {hora_salida_texto}. "
-            else:
-                mensaje += f"Luego viene el de las {hora_salida_texto}. "
-
-        # Solo al final, usamos la duración del primer tren (o puedes elegir otro)
-        duracion_texto = minutos_a_texto(proximos[0]['duracion'])
-        mensaje += f"Recuerda que la duración del viaje es de {duracion_texto}."
-
+        # Lógica simplificada de texto
+        mensaje = f"Son las {ahora_str}. El próximo tren sale a las {lista[0]['salida']}."
+        if len(lista) > 1:
+            mensaje += f" Luego hay otro a las {lista[1]['salida']}."
+        mensaje += f" El viaje dura {lista[0]['duracion']}."
 
     return {
-        "hora_actual": ahora.strftime("%H:%M"),
-        "fecha": fecha_hoy,
-        "origen": DESTINOS.get(origen, "Desconocido"),
-        "destino": DESTINOS.get(destino, "Desconocido"),
-        "mensaje": mensaje.strip(),
-        "proximos": proximos
+        "mensaje": mensaje,
+        "data_raw": data
     }
 
+@app.get("/itinerarios/ahora/visual", response_class=HTMLResponse)
+def itinerarios_visual(
+    request: Request,
+    origen: int = Query(6),
+    destino: int = Query(3)
+):
+    data = itinerarios_proximos(origen, destino)
+    
+    # Manejo de errores si la función devuelve JSONResponse
+    if isinstance(data, JSONResponse):
+        return templates.TemplateResponse("visual.html", {
+            "request": request,
+            "error": "Hubo un error al conectar con EFE.",
+            "proximos": {"Todos": []}
+        })
+
+    return templates.TemplateResponse("visual.html", {
+        "request": request,
+        "origen": data["origen"],
+        "destino": data["destino"],
+        "fecha": data["fecha"],
+        "hora_actual": data["hora_actual"],
+        "proximos": data["proximos"]["Todos"] # Pasamos la lista combinada ordenada
+    })

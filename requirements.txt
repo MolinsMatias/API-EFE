@@ -2,3 +2,6 @@ fastapi
 uvicorn[standard]
 requests
 beautifulsoup4
+uvicorn
+jinja2
+tzdata
