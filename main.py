@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 import requests
 from bs4 import BeautifulSoup
-from typing import List, Tuple, Optional, Dict
+from typing import List, Tuple, Optional, Dict, Union
 from datetime import datetime
 try:
     from zoneinfo import ZoneInfo
@@ -15,6 +15,7 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 TZ_CHILE = ZoneInfo("America/Santiago")
 
+# Diccionario maestro de estaciones
 DESTINOS = {
     1: "Estación Central",
     3: "San Bernardo",
@@ -28,14 +29,35 @@ DESTINOS = {
     13: "Rancagua"
 }
 
+# --- FUNCIÓN MÁGICA: TEXTO -> ID ---
+def resolver_id_estacion(entrada: Union[int, str]) -> Optional[int]:
+    """
+    Convierte 'San Francisco' o '11' en el ID 11.
+    Es insensible a mayúsculas/minúsculas.
+    """
+    if str(entrada).isdigit():
+        return int(entrada)
+    
+    entrada_limpia = str(entrada).lower().strip()
+    
+    # Buscamos en el diccionario por nombre
+    for id_est, nombre in DESTINOS.items():
+        if nombre.lower() == entrada_limpia:
+            return id_est
+    return None
+
 # --- LÓGICA DE PRECIOS ESTUDIANTE ---
 def calcular_tarifa_estudiante(precio_str: str, origen: int, destino: int) -> str:
     try:
         precio_normal = int(precio_str.replace('.', '').replace('$', ''))
         descuento = 0.0
+        # Tramo Norte (Estación Central - Hospital) -> 48%
         if origen <= 10 and destino <= 10: descuento = 0.48
+        # Tramo Sur (San Francisco - Rancagua) -> 47%
         elif origen >= 11 and destino >= 11: descuento = 0.47
+        # Mixto (Por defecto usamos el del sur) -> 47%
         else: descuento = 0.47
+        
         precio_final = int(precio_normal * (1 - descuento))
         return f"{precio_final:,}".replace(',', '.')
     except: return precio_str
@@ -62,33 +84,49 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
         })
     return itinerarios
 
-def obtener_todos_los_viajes(origen: int, destino: int) -> Tuple[Optional[List[Dict]], Optional[str]]:
+def obtener_todos_los_viajes(origen_input: Union[str, int], destino_input: Union[str, int]) -> Tuple[Optional[List[Dict]], Optional[str], int, int]:
+    # Convertimos nombres a IDs
+    id_origen = resolver_id_estacion(origen_input)
+    id_destino = resolver_id_estacion(destino_input)
+
+    if not id_origen: return None, f"Estación origen '{origen_input}' no encontrada", 0, 0
+    if not id_destino: return None, f"Estación destino '{destino_input}' no encontrada", 0, 0
+
     ahora_chile = datetime.now(TZ_CHILE)
     fecha_hoy = ahora_chile.strftime("%Y-%m-%d")
-    url = f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
+    
+    url = f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1&ida=1&origen={id_origen}&destino={id_destino}&salida={fecha_hoy}&hran=1"
+    
     try:
         response = requests.get(url, timeout=10)
-        if response.status_code != 200: return None, "Error EFE"
-    except: return None, "Error Conexión"
+        if response.status_code != 200: return None, "Error EFE", id_origen, id_destino
+    except: return None, "Error Conexión", id_origen, id_destino
+    
     baja = scrape_itinerarios(response.text, "Baja")
     alta = scrape_itinerarios(response.text, "Alta")
-    return sorted(baja + alta, key=lambda x: x['salida']), None
+    return sorted(baja + alta, key=lambda x: x['salida']), None, id_origen, id_destino
 
 # --- ENDPOINTS ---
 
 @app.get("/itinerarios/ahora/siri")
-def itinerarios_siri(origen: int = Query(...), destino: int = Query(...)):
-    todos, error = obtener_todos_los_viajes(origen, destino)
+def itinerarios_siri(
+    origen: str = Query(..., description="Nombre o ID origen"), 
+    destino: str = Query(..., description="Nombre o ID destino")
+):
+    todos, error, id_org, id_dst = obtener_todos_los_viajes(origen, destino)
+    
     if error: return JSONResponse(status_code=500, content={"error": error})
+    
     ahora = datetime.now(TZ_CHILE)
     proximos = []
     for t in todos:
         try:
             h, m = map(int, t['salida'].split(':'))
             if ahora.replace(hour=h, minute=m, second=0) >= ahora:
-                t['valor_estudiante'] = calcular_tarifa_estudiante(t['valor'], origen, destino)
+                t['valor_estudiante'] = calcular_tarifa_estudiante(t['valor'], id_org, id_dst)
                 proximos.append(t)
         except: continue
+        
     if not proximos: mensaje = "No quedan trenes por hoy."
     else:
         tren = proximos[0]
@@ -96,13 +134,17 @@ def itinerarios_siri(origen: int = Query(...), destino: int = Query(...)):
     return {"mensaje": mensaje}
 
 @app.get("/itinerarios/visual", response_class=HTMLResponse)
-def itinerarios_visual(request: Request, origen: int = Query(...), destino: int = Query(...)):
-    todos, error = obtener_todos_los_viajes(origen, destino)
+def itinerarios_visual(
+    request: Request, 
+    origen: str = Query(..., description="Nombre o ID origen"), 
+    destino: str = Query(..., description="Nombre o ID destino")
+):
+    todos, error, id_org, id_dst = obtener_todos_los_viajes(origen, destino)
     
     contexto = {
         "request": request,
-        "origen": DESTINOS.get(origen, "Estación"),
-        "destino": DESTINOS.get(destino, "Estación"),
+        "origen": DESTINOS.get(id_org, origen),
+        "destino": DESTINOS.get(id_dst, destino),
         "hora_actual": datetime.now(TZ_CHILE).strftime("%H:%M"),
         "pasados": [],
         "proximos": []
@@ -120,7 +162,8 @@ def itinerarios_visual(request: Request, origen: int = Query(...), destino: int 
             hora_tren = ahora.replace(hour=h, minute=m, second=0)
             
             tren = item.copy()
-            tren['valor_estudiante'] = calcular_tarifa_estudiante(tren['valor'], origen, destino)
+            # Calculamos tarifa usando los IDs numéricos resueltos
+            tren['valor_estudiante'] = calcular_tarifa_estudiante(tren['valor'], id_org, id_dst)
             
             if hora_tren < ahora:
                 contexto["pasados"].append(tren)
