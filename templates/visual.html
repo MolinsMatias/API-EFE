@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Itinerario Trenes</title>
+    <title>Itinerario TNE</title>
     <style>
         :root {
             --bg-color: #F2F2F7;
@@ -12,10 +12,9 @@
             --text-sub: #8E8E93;
             --accent: #007AFF;
             --price: #34C759;
-            /* Colores para viajes pasados (Rojo Pastel) */
-            --past-bg: #FFF0F0; 
+            --price-old: #C7C7CC;
+            --past-bg: #FFF0F0;
             --past-text: #CFAFAF;
-            --past-accent: #E57373;
         }
         @media (prefers-color-scheme: dark) {
             :root {
@@ -23,126 +22,123 @@
                 --card-bg: #1C1C1E;
                 --text-main: #FFFFFF;
                 --text-sub: #8E8E93;
-                /* Rojo pastel oscuro para modo noche */
-                --past-bg: #2C1B1B; 
+                --price-old: #48484A;
+                --past-bg: #2C1B1B;
                 --past-text: #6E5E5E;
-                --past-accent: #8E4444;
             }
         }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0;
-            padding: 16px;
-            /* Padding extra abajo para poder hacer scroll cómodo */
-            padding-bottom: 50px; 
+            margin: 0; 
+            padding: 16px; 
+            padding-bottom: 50px;
         }
-        .header {
-            text-align: center;
-            margin-bottom: 24px;
-            padding-top: 10px;
+        .header { text-align: center; margin-bottom: 24px; padding-top: 10px; }
+        .route { font-size: 18px; font-weight: 700; }
+        .tne-badge { 
+            background: #007AFF; color: white; padding: 2px 8px; 
+            border-radius: 4px; font-size: 10px; vertical-align: middle; 
         }
-        .route { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
-        .time-check { font-size: 13px; color: var(--text-sub); }
-
+        
         .card {
             background-color: var(--card-bg);
             border-radius: 14px;
-            padding: 16px 20px;
-            margin-bottom: 12px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            transition: transform 0.2s;
         }
 
-        /* ESTILOS PARA VIAJES PASADOS */
-        .card.pasado {
-            background-color: var(--past-bg);
-            box-shadow: none;
-            border: 1px solid rgba(0,0,0,0.05);
-        }
-        .card.pasado .time-big { color: var(--past-accent); text-decoration: line-through; }
-        .card.pasado .time-arrival, 
-        .card.pasado .price-tag, 
-        .card.pasado .duration { color: var(--past-text); }
-        .card.pasado .badge { opacity: 0.5; grayscale: 100%; filter: grayscale(100%); }
+        /* ESTILOS VIAJES PASADOS */
+        .card.pasado { background-color: var(--past-bg); }
+        .card.pasado .time-big { text-decoration: line-through; opacity: 0.6; }
+        .card.pasado .price-student { color: var(--past-text); }
 
         .left-info { display: flex; flex-direction: column; }
-        .time-big { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-main); }
-        .time-arrival { font-size: 14px; color: var(--text-sub); margin-top: 2px; }
-        
-        .right-info { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
-        .price-tag { font-size: 17px; font-weight: 700; color: var(--price); }
-        .duration { font-size: 13px; color: var(--text-sub); margin: 4px 0; }
-        
-        .badge {
-            font-size: 11px; padding: 4px 8px; border-radius: 6px;
-            font-weight: 700; text-transform: uppercase;
-        }
-        .badge.Alta { background: #FFD60A; color: #000; }
-        .badge.Baja { background: #E5E5EA; color: #000; }
-        @media (prefers-color-scheme: dark) { .badge.Baja { background: #3A3A3C; color: #FFF; } }
+        .time-big { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+        .time-sub { font-size: 13px; color: var(--text-sub); }
 
-        /* Separador visual opcional */
-        .separator {
-            text-align: center;
-            font-size: 12px;
-            color: var(--text-sub);
-            margin: 20px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.6;
+        .right-info { display: flex; flex-direction: column; align-items: flex-end; }
+        
+        /* PRECIOS */
+        .price-container { display: flex; flex-direction: column; align-items: flex-end; }
+        .price-original { 
+            font-size: 11px; 
+            text-decoration: line-through; 
+            color: var(--price-old); 
+            margin-bottom: -2px;
         }
+        .price-student { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: var(--price); 
+        }
+
+        .badge {
+            font-size: 10px; padding: 3px 6px; border-radius: 4px;
+            font-weight: 700; text-transform: uppercase; margin-top: 4px;
+        }
+        .badge.Alta { background: #FFD60A; color: black; }
+        .badge.Baja { background: #E5E5EA; color: black; }
+        @media (prefers-color-scheme: dark) { .badge.Baja { background: #3A3A3C; color: white; } }
+        
+        #scroll-target { padding-top: 80px; margin-top: -60px; }
+        .separator { text-align: center; font-size: 11px; color: var(--text-sub); margin: 15px 0; opacity: 0.5; text-transform: uppercase;}
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="route">{{ origen }} ➝ {{ destino }}</div>
-        <div class="time-check">Actualizado: {{ hora_actual }}</div>
+        <div class="route">
+            {{ origen }} ➝ {{ destino }} 
+            <span class="tne-badge">TNE</span>
+        </div>
+        <div style="font-size: 13px; color: gray;">Actualizado: {{ hora_actual }}</div>
     </div>
 
     {% if error %}
         <div style="text-align:center; color: red;">{{ error }}</div>
     {% else %}
-        
         {% for tren in viajes %}
             
             {% if tren.scroll_target %}
-                <div id="scroll-target" style="padding-top: 10px;"></div>
-                <div class="separator">Ahora / Próximos</div>
+                <div id="scroll-target"></div>
+                <div class="separator">Próximos Trenes</div>
             {% endif %}
 
             <div class="card {{ tren.estado }}">
                 <div class="left-info">
                     <span class="time-big">{{ tren.salida }}</span>
-                    <span class="time-arrival">Llega {{ tren.llegada }}</span>
+                    <span class="time-sub">Llega {{ tren.llegada }}</span>
                 </div>
                 <div class="right-info">
-                    <span class="price-tag">${{ tren.valor }}</span>
-                    <span class="duration">⏱ {{ tren.duracion }}</span>
+                    
+                    <div class="price-container">
+                        <span class="price-original">${{ tren.valor }}</span>
+                        <span class="price-student">${{ tren.valor_estudiante }}</span>
+                    </div>
+
                     <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
                 </div>
             </div>
         {% endfor %}
-
     {% endif %}
 
     <script>
-        window.onload = function() {
-            var target = document.getElementById("scroll-target");
-            if (target) {
-                // Hacemos scroll suave hacia el primer tren vigente
-                target.scrollIntoView({ behavior: "smooth", block: "start" });
-            } else {
-                // Si no hay target (ej: son las 23:00 y no hay más trenes), vamos al final
-                window.scrollTo(0, document.body.scrollHeight);
-            }
-        };
+        document.addEventListener("DOMContentLoaded", function() {
+            setTimeout(function() {
+                var target = document.getElementById("scroll-target");
+                if (target) {
+                    target.scrollIntoView({ behavior: "smooth", block: "start" });
+                } else {
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                }
+            }, 600);
+        });
     </script>
-
 </body>
 </html>

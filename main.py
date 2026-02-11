@@ -12,10 +12,7 @@ except ImportError:
 
 app = FastAPI()
 
-# Configuración de plantillas
 templates = Jinja2Templates(directory="templates")
-
-# Configuración Zona Horaria Chile
 TZ_CHILE = ZoneInfo("America/Santiago")
 
 DESTINOS = {
@@ -31,38 +28,56 @@ DESTINOS = {
     13: "Rancagua"
 }
 
-# --- LÓGICA DE SCRAPING ---
+# --- LÓGICA DE PRECIOS ESTUDIANTE ---
+def calcular_tarifa_estudiante(precio_str: str, origen: int, destino: int) -> str:
+    """Calcula el descuento según el tramo del viaje"""
+    try:
+        # Limpiamos el precio (quitamos puntos y signos)
+        precio_normal = int(precio_str.replace('.', '').replace('$', ''))
+        
+        # Lógica de tramos EFE:
+        # Tramo 1: Estación Central (1) a Hospital (10) -> 48% dcto
+        # Tramo 2: San Francisco (11) a Rancagua (13) -> 47% dcto
+        
+        descuento = 0.0
+        
+        # Si ambos puntos están en el tramo norte (ID <= 10)
+        if origen <= 10 and destino <= 10:
+            descuento = 0.48
+        # Si ambos puntos están en el tramo sur (ID >= 11)
+        elif origen >= 11 and destino >= 11:
+            descuento = 0.47
+        else:
+            # Si cruza tramos (ej: Buin a Rancagua), aplicamos el promedio conservador o el del tramo mayor
+            # Por seguridad usaremos 47% si es mixto
+            descuento = 0.47
+            
+        precio_final = int(precio_normal * (1 - descuento))
+        
+        # Formateamos de vuelta a string con puntos (ej: "680")
+        return f"{precio_final:,}".replace(',', '.')
+    except:
+        return precio_str
 
+# --- SCRAPING ---
 def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
     soup = BeautifulSoup(html, 'html.parser')
     itinerarios = []
     tarifa_label = f"Salidas Tarifa {tipo_tarifa}"
     tabla = soup.find('p', string=tarifa_label)
-    
-    if not tabla:
-        return []
-    
+    if not tabla: return []
     tabla = tabla.find_next('table')
-    if not tabla or not tabla.tbody:
-        return []
-        
+    if not tabla or not tabla.tbody: return []
     rows = tabla.tbody.find_all('tr')
 
     for i, row in enumerate(rows, 1):
         cols = row.find_all('td')
         if not cols: continue
-        
-        salida = cols[0].get_text(strip=True).replace('🕒', '')
-        llegada = cols[1].get_text(strip=True).replace('🕒', '')
-        duracion = cols[2].get_text(strip=True).replace('⌛', '')
-        valor = cols[3].get_text(strip=True).replace('$', '').replace('.', '').strip()
-        
         itinerarios.append({
-            'viaje': i,
-            'salida': salida,
-            'llegada': llegada,
-            'duracion': duracion,
-            'valor': valor,
+            'salida': cols[0].get_text(strip=True).replace('🕒', ''),
+            'llegada': cols[1].get_text(strip=True).replace('🕒', ''),
+            'duracion': cols[2].get_text(strip=True).replace('⌛', ''),
+            'valor': cols[3].get_text(strip=True).replace('$', '').replace('.', '').strip(),
             'tarifa': tipo_tarifa
         })
     return itinerarios
@@ -70,144 +85,82 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
 def obtener_todos_los_viajes(origen: int, destino: int) -> Tuple[Optional[List[Dict]], Optional[str]]:
     ahora_chile = datetime.now(TZ_CHILE)
     fecha_hoy = ahora_chile.strftime("%Y-%m-%d")
-    
-    url = (
-        f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
-        f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
-    )
+    url = f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
     
     try:
         response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            return None, "Error al obtener datos"
-    except Exception as e:
-        return None, f"Error de conexión: {str(e)}"
+        if response.status_code != 200: return None, "Error EFE"
+    except: return None, "Error Conexión"
     
     baja = scrape_itinerarios(response.text, "Baja")
     alta = scrape_itinerarios(response.text, "Alta")
-    todos = sorted(baja + alta, key=lambda x: x['salida'])
-    
-    return todos, None
-
-# --- UTILIDADES ---
-
-def filtrar_proximos(lista_todos: List[Dict]) -> List[Dict]:
-    ahora = datetime.now(TZ_CHILE)
-    proximos = []
-    for item in lista_todos:
-        try:
-            h, m = map(int, item['salida'].split(':'))
-            # Creamos un objeto datetime con la hora del tren para hoy
-            hora_salida = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
-            
-            # Si la hora es mayor o igual a la actual, sirve
-            if hora_salida >= ahora:
-                proximos.append(item)
-        except ValueError:
-            continue
-    return proximos
-
-def hora_a_texto(hora_str: str) -> str:
-    """Convierte HH:MM a texto natural para Siri"""
-    try:
-        horas, minutos = map(int, hora_str.split(':'))
-    except:
-        return hora_str
-
-    periodo = "de la mañana"
-    if horas == 0: periodo = "de la madrugada"; horas_12 = 12
-    elif horas == 12: periodo = "del mediodía"; horas_12 = 12
-    elif horas > 12: periodo = "de la tarde" if horas < 20 else "de la noche"; horas_12 = horas - 12
-    else: horas_12 = horas
-
-    numeros = ["doce", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce"]
-    texto_h = numeros[horas_12 % 12]
-    if horas_12 == 12: texto_h = "doce"
-
-    if minutos == 0: texto_m = "en punto"
-    elif minutos < 10: texto_m = f"cero {minutos}"
-    elif minutos <= 15:
-        especiales = {10:"diez", 11:"once", 12:"doce", 13:"trece", 14:"catorce", 15:"quince"}
-        texto_m = especiales.get(minutos, str(minutos))
-    elif minutos < 20: texto_m = f"dieci{minutos-10}" # Simplificado
-    elif minutos == 30: texto_m = "y media"
-    else: texto_m = f"{minutos}"
-
-    return f"{texto_h} {texto_m} {periodo}"
+    return sorted(baja + alta, key=lambda x: x['salida']), None
 
 # --- ENDPOINTS ---
 
 @app.get("/itinerarios/ahora/siri")
-def itinerarios_siri(
-    origen: int = Query(..., description="Código origen"),
-    destino: int = Query(..., description="Código destino")
-):
-    """Endpoint optimizado para lectura de voz (Siri)"""
+def itinerarios_siri(origen: int = Query(...), destino: int = Query(...)):
     todos, error = obtener_todos_los_viajes(origen, destino)
-    if error:
-        return JSONResponse(status_code=500, content={"error": error})
+    if error: return JSONResponse(status_code=500, content={"error": error})
     
-    proximos = filtrar_proximos(todos)
-    ahora_str = datetime.now(TZ_CHILE).strftime("%H:%M")
-    
+    # Filtramos próximos
+    ahora = datetime.now(TZ_CHILE)
+    proximos = []
+    for t in todos:
+        try:
+            h, m = map(int, t['salida'].split(':'))
+            if ahora.replace(hour=h, minute=m, second=0) >= ahora:
+                # Calculamos precio estudiante para Siri
+                t['valor_estudiante'] = calcular_tarifa_estudiante(t['valor'], origen, destino)
+                proximos.append(t)
+        except: continue
+        
     if not proximos:
-        mensaje = f"No hay más trenes desde {DESTINOS.get(origen)} hacia {DESTINOS.get(destino)} por hoy."
+        mensaje = "No quedan trenes por hoy."
     else:
         tren = proximos[0]
-        mensaje = f"Son las {hora_a_texto(ahora_str)}. El próximo tren sale a las {hora_a_texto(tren['salida'])} y cuesta {tren['valor']} pesos."
+        # Siri ahora te dirá el precio con descuento
+        mensaje = f"Próximo tren a las {tren['salida']}. Tarifa estudiante: {tren['valor_estudiante']} pesos."
         
-        if len(proximos) > 1:
-            siguiente = proximos[1]
-            mensaje += f" Después, hay otro a las {siguiente['salida']}."
-
-    return {
-        "mensaje": mensaje,
-        "data": proximos[:4]
-    }
+    return {"mensaje": mensaje}
 
 @app.get("/itinerarios/visual", response_class=HTMLResponse)
-def itinerarios_visual(
-    request: Request,
-    origen: int = Query(..., description="Código origen"),
-    destino: int = Query(..., description="Código destino")
-):
+def itinerarios_visual(request: Request, origen: int = Query(...), destino: int = Query(...)):
     todos, error = obtener_todos_los_viajes(origen, destino)
     
     contexto = {
         "request": request,
-        "origen": DESTINOS.get(origen, "Desconocido"),
-        "destino": DESTINOS.get(destino, "Desconocido"),
+        "origen": DESTINOS.get(origen, "Estación"),
+        "destino": DESTINOS.get(destino, "Estación"),
         "hora_actual": datetime.now(TZ_CHILE).strftime("%H:%M"),
-        "viajes": [] # Usaremos una lista única con marcas
+        "viajes": []
     }
-
+    
     if error:
         contexto["error"] = error
         return templates.TemplateResponse("visual.html", contexto)
 
     ahora = datetime.now(TZ_CHILE)
-    primer_proximo_encontrado = False # Flag para marcar dónde hacer scroll
+    primer_scroll = False
 
     for item in todos:
         try:
             h, m = map(int, item['salida'].split(':'))
-            hora_tren = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+            hora_tren = ahora.replace(hour=h, minute=m, second=0)
             
-            # Copiamos el item para no modificar el original
             tren = item.copy()
+            # AQUI CALCULAMOS EL PRECIO ESTUDIANTE
+            tren['valor_estudiante'] = calcular_tarifa_estudiante(tren['valor'], origen, destino)
             
             if hora_tren < ahora:
                 tren['estado'] = 'pasado'
             else:
                 tren['estado'] = 'proximo'
-                # Marcamos SOLO el primero de los próximos para el scroll
-                if not primer_proximo_encontrado:
+                if not primer_scroll:
                     tren['scroll_target'] = True
-                    primer_proximo_encontrado = True
+                    primer_scroll = True
             
             contexto["viajes"].append(tren)
-            
-        except ValueError:
-            continue
+        except: continue
             
     return templates.TemplateResponse("visual.html", contexto)
