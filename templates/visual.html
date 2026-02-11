@@ -128,17 +128,29 @@
         {% endfor %}
     {% endif %}
 
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            setTimeout(function() {
-                var target = document.getElementById("scroll-target");
-                if (target) {
-                    target.scrollIntoView({ behavior: "smooth", block: "start" });
-                } else {
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                }
-            }, 600);
-        });
+<script>
+        function irAlProximo(tipoAnimacion) {
+            var target = document.getElementById("scroll-target");
+            if (target) {
+                // 'block: start' intenta poner el elemento al principio de la pantalla
+                target.scrollIntoView({ behavior: tipoAnimacion, block: "start" });
+            } else {
+                // Si no hay target, vamos al final
+                window.scrollTo({ top: document.body.scrollHeight, behavior: tipoAnimacion });
+            }
+        }
+
+        window.onload = function() {
+            // Intento 1 (100ms): Salto BRUSCO (auto) para asegurar la posición inicial
+            // Esto evita que veas los viajes pasados apenas abre
+            setTimeout(function() { irAlProximo('auto'); }, 100);
+
+            // Intento 2 (500ms): Reintento suave por si la ventana cambió de tamaño
+            setTimeout(function() { irAlProximo('smooth'); }, 500);
+
+            // Intento 3 (1000ms): El definitivo, por si el iPhone estaba lento
+            setTimeout(function() { irAlProximo('smooth'); }, 1000);
+        };
     </script>
 </body>
 </html>
