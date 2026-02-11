@@ -47,7 +47,7 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
     return itinerarios
 
 def obtener_todos_los_viajes(origen: int, destino: int) -> Tuple[Optional[List[Dict]], Optional[str]]:
-    fecha_hoy = (datetime.utcnow() - timedelta(hours=4)).strftime("%Y-%m-%d")
+    fecha_hoy = (datetime.utcnow() - timedelta(hours=2)).strftime("%Y-%m-%d")
     url = (
         f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1"
         f"&ida=1&origen={origen}&destino={destino}&salida={fecha_hoy}&hran=1"
@@ -79,7 +79,7 @@ def itinerarios_proximos(
     origen: int = Query(6, description="Código de la estación de origen"),
     destino: int = Query(3, description="Código de la estación de destino")
 ):
-    ahora = datetime.utcnow() - timedelta(hours=4)
+    ahora = datetime.utcnow() - timedelta(hours=2)
     fecha_hoy = ahora.strftime("%Y-%m-%d")
 
     url = (
@@ -194,7 +194,7 @@ def itinerarios_siri(
     origen: int = Query(6, description="Código de la estación de origen"),
     destino: int = Query(3, description="Código de la estación de destino")
 ):
-    ahora = datetime.utcnow() - timedelta(hours=4)
+    ahora = datetime.utcnow() - timedelta(hours=2)
     fecha_hoy = ahora.strftime("%Y-%m-%d")
     
     itinerarios = obtener_todos_los_viajes(origen, destino)[0]
