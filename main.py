@@ -171,7 +171,6 @@ def itinerarios_visual(
     origen: int = Query(..., description="Código origen"),
     destino: int = Query(..., description="Código destino")
 ):
-    """Endpoint visual para 'Mostrar vista web' en Atajos iOS"""
     todos, error = obtener_todos_los_viajes(origen, destino)
     
     contexto = {
@@ -179,14 +178,36 @@ def itinerarios_visual(
         "origen": DESTINOS.get(origen, "Desconocido"),
         "destino": DESTINOS.get(destino, "Desconocido"),
         "hora_actual": datetime.now(TZ_CHILE).strftime("%H:%M"),
-        "proximos": []
+        "viajes": [] # Usaremos una lista única con marcas
     }
 
     if error:
         contexto["error"] = error
         return templates.TemplateResponse("visual.html", contexto)
 
-    proximos = filtrar_proximos(todos)
-    contexto["proximos"] = proximos[:6] # Mostramos hasta 6 próximos
-    
+    ahora = datetime.now(TZ_CHILE)
+    primer_proximo_encontrado = False # Flag para marcar dónde hacer scroll
+
+    for item in todos:
+        try:
+            h, m = map(int, item['salida'].split(':'))
+            hora_tren = ahora.replace(hour=h, minute=m, second=0, microsecond=0)
+            
+            # Copiamos el item para no modificar el original
+            tren = item.copy()
+            
+            if hora_tren < ahora:
+                tren['estado'] = 'pasado'
+            else:
+                tren['estado'] = 'proximo'
+                # Marcamos SOLO el primero de los próximos para el scroll
+                if not primer_proximo_encontrado:
+                    tren['scroll_target'] = True
+                    primer_proximo_encontrado = True
+            
+            contexto["viajes"].append(tren)
+            
+        except ValueError:
+            continue
+            
     return templates.TemplateResponse("visual.html", contexto)
