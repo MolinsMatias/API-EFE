@@ -15,6 +15,7 @@
             --price-old: #C7C7CC;
             --past-bg: #FFF0F0;
             --past-text: #CFAFAF;
+            --past-accent: #E57373;
         }
         @media (prefers-color-scheme: dark) {
             :root {
@@ -25,22 +26,18 @@
                 --price-old: #48484A;
                 --past-bg: #2C1B1B;
                 --past-text: #6E5E5E;
+                --past-accent: #8E4444;
             }
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            margin: 0; 
-            padding: 16px; 
-            padding-bottom: 50px;
+            margin: 0; padding: 16px; padding-bottom: 50px;
         }
-        .header { text-align: center; margin-bottom: 24px; padding-top: 10px; }
+        .header { text-align: center; margin-bottom: 20px; padding-top: 10px; }
         .route { font-size: 18px; font-weight: 700; }
-        .tne-badge { 
-            background: #007AFF; color: white; padding: 2px 8px; 
-            border-radius: 4px; font-size: 10px; vertical-align: middle; 
-        }
+        .tne-badge { background: #007AFF; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; vertical-align: middle; }
         
         .card {
             background-color: var(--card-bg);
@@ -53,104 +50,103 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
 
+        /* ESTILOS ACORDEÓN (DETAILS/SUMMARY) */
+        details { margin-bottom: 20px; }
+        summary {
+            list-style: none; /* Ocultar triángulo default */
+            text-align: center;
+            padding: 10px;
+            background-color: rgba(128, 128, 128, 0.1);
+            border-radius: 8px;
+            color: var(--text-sub);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        summary::-webkit-details-marker { display: none; } /* Safari fix */
+        summary:after { content: " ▼"; font-size: 10px; }
+        details[open] summary:after { content: " ▲"; }
+
         /* ESTILOS VIAJES PASADOS */
-        .card.pasado { background-color: var(--past-bg); }
-        .card.pasado .time-big { text-decoration: line-through; opacity: 0.6; }
+        .card.pasado { background-color: var(--past-bg); border: 1px solid rgba(0,0,0,0.05); }
+        .card.pasado .time-big { text-decoration: line-through; opacity: 0.6; color: var(--past-accent); }
         .card.pasado .price-student { color: var(--past-text); }
+        .card.pasado .badge { opacity: 0.5; filter: grayscale(100%); }
 
         .left-info { display: flex; flex-direction: column; }
         .time-big { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
         .time-sub { font-size: 13px; color: var(--text-sub); }
 
         .right-info { display: flex; flex-direction: column; align-items: flex-end; }
-        
-        /* PRECIOS */
         .price-container { display: flex; flex-direction: column; align-items: flex-end; }
-        .price-original { 
-            font-size: 11px; 
-            text-decoration: line-through; 
-            color: var(--price-old); 
-            margin-bottom: -2px;
-        }
-        .price-student { 
-            font-size: 18px; 
-            font-weight: 700; 
-            color: var(--price); 
-        }
+        .price-original { font-size: 11px; text-decoration: line-through; color: var(--price-old); margin-bottom: -2px;}
+        .price-student { font-size: 18px; font-weight: 700; color: var(--price); }
 
-        .badge {
-            font-size: 10px; padding: 3px 6px; border-radius: 4px;
-            font-weight: 700; text-transform: uppercase; margin-top: 4px;
-        }
+        .badge { font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-top: 4px; }
         .badge.Alta { background: #FFD60A; color: black; }
         .badge.Baja { background: #E5E5EA; color: black; }
         @media (prefers-color-scheme: dark) { .badge.Baja { background: #3A3A3C; color: white; } }
         
-        #scroll-target { padding-top: 80px; margin-top: -60px; }
-        .separator { text-align: center; font-size: 11px; color: var(--text-sub); margin: 15px 0; opacity: 0.5; text-transform: uppercase;}
+        .empty-msg { text-align: center; color: var(--text-sub); margin-top: 40px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div class="route">
-            {{ origen }} ➝ {{ destino }} 
-            <span class="tne-badge">TNE</span>
-        </div>
+        <div class="route">{{ origen }} ➝ {{ destino }} <span class="tne-badge">TNE</span></div>
         <div style="font-size: 13px; color: gray;">Actualizado: {{ hora_actual }}</div>
     </div>
 
     {% if error %}
         <div style="text-align:center; color: red;">{{ error }}</div>
     {% else %}
-        {% for tren in viajes %}
-            
-            {% if tren.scroll_target %}
-                <div id="scroll-target"></div>
-                <div class="separator">Próximos Trenes</div>
-            {% endif %}
+        
+        {% if pasados %}
+        <details>
+            <summary>Ver {{ pasados|length }} viajes anteriores</summary>
+            {% for tren in pasados %}
+            <div class="card pasado">
+                <div class="left-info">
+                    <span class="time-big">{{ tren.salida }}</span>
+                    <span class="time-sub">Llegada {{ tren.llegada }}</span>
+                </div>
+                <div class="right-info">
+                    <div class="price-container">
+                        <span class="price-original">${{ tren.valor }}</span>
+                        <span class="price-student">${{ tren.valor_estudiante }}</span>
+                    </div>
+                    <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </details>
+        {% endif %}
 
-            <div class="card {{ tren.estado }}">
+        {% if proximos %}
+            {% for tren in proximos %}
+            <div class="card">
                 <div class="left-info">
                     <span class="time-big">{{ tren.salida }}</span>
                     <span class="time-sub">Llega {{ tren.llegada }}</span>
                 </div>
                 <div class="right-info">
-                    
                     <div class="price-container">
                         <span class="price-original">${{ tren.valor }}</span>
                         <span class="price-student">${{ tren.valor_estudiante }}</span>
                     </div>
-
                     <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
                 </div>
             </div>
-        {% endfor %}
+            {% endfor %}
+        {% else %}
+            <div class="empty-msg">
+                <p style="font-size: 40px; margin-bottom: 10px;">😴</p>
+                No hay más trenes por hoy
+            </div>
+        {% endif %}
+
     {% endif %}
 
-<script>
-        function irAlProximo(tipoAnimacion) {
-            var target = document.getElementById("scroll-target");
-            if (target) {
-                // 'block: start' intenta poner el elemento al principio de la pantalla
-                target.scrollIntoView({ behavior: tipoAnimacion, block: "start" });
-            } else {
-                // Si no hay target, vamos al final
-                window.scrollTo({ top: document.body.scrollHeight, behavior: tipoAnimacion });
-            }
-        }
-
-        window.onload = function() {
-            // Intento 1 (100ms): Salto BRUSCO (auto) para asegurar la posición inicial
-            // Esto evita que veas los viajes pasados apenas abre
-            setTimeout(function() { irAlProximo('auto'); }, 100);
-
-            // Intento 2 (500ms): Reintento suave por si la ventana cambió de tamaño
-            setTimeout(function() { irAlProximo('smooth'); }, 500);
-
-            // Intento 3 (1000ms): El definitivo, por si el iPhone estaba lento
-            setTimeout(function() { irAlProximo('smooth'); }, 1000);
-        };
-    </script>
 </body>
 </html>
