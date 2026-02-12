@@ -4,7 +4,9 @@ from fastapi.templating import Jinja2Templates
 import requests
 from bs4 import BeautifulSoup
 from typing import List, Tuple, Optional, Dict, Union
-from datetime import datetime
+from datetime import datetime, timedelta
+import unicodedata
+
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -15,7 +17,6 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 TZ_CHILE = ZoneInfo("America/Santiago")
 
-# Diccionario maestro de estaciones
 DESTINOS = {
     1: "Estación Central",
     3: "San Bernardo",
@@ -29,35 +30,26 @@ DESTINOS = {
     13: "Rancagua"
 }
 
-# --- FUNCIÓN MÁGICA: TEXTO -> ID ---
+# --- UTILIDADES ---
+def normalizar_texto(texto: str) -> str:
+    if not texto: return ""
+    texto = str(texto).lower()
+    texto = texto.replace('%20', ' ').replace('+', ' ')
+    texto = ''.join(c for c in unicodedata.normalize('NFD', texto) if unicodedata.category(c) != 'Mn')
+    return texto.strip()
+
 def resolver_id_estacion(entrada: Union[int, str]) -> Optional[int]:
-    """
-    Convierte 'San Francisco' o '11' en el ID 11.
-    Es insensible a mayúsculas/minúsculas.
-    """
-    if str(entrada).isdigit():
-        return int(entrada)
-    
-    entrada_limpia = str(entrada).lower().strip()
-    
-    # Buscamos en el diccionario por nombre
+    if str(entrada).isdigit(): return int(entrada)
+    busqueda = normalizar_texto(entrada)
     for id_est, nombre in DESTINOS.items():
-        if nombre.lower() == entrada_limpia:
-            return id_est
+        if busqueda == normalizar_texto(nombre): return id_est
     return None
 
-# --- LÓGICA DE PRECIOS ESTUDIANTE ---
 def calcular_tarifa_estudiante(precio_str: str, origen: int, destino: int) -> str:
     try:
         precio_normal = int(precio_str.replace('.', '').replace('$', ''))
-        descuento = 0.0
-        # Tramo Norte (Estación Central - Hospital) -> 48%
+        descuento = 0.47
         if origen <= 10 and destino <= 10: descuento = 0.48
-        # Tramo Sur (San Francisco - Rancagua) -> 47%
-        elif origen >= 11 and destino >= 11: descuento = 0.47
-        # Mixto (Por defecto usamos el del sur) -> 47%
-        else: descuento = 0.47
-        
         precio_final = int(precio_normal * (1 - descuento))
         return f"{precio_final:,}".replace(',', '.')
     except: return precio_str
@@ -72,7 +64,7 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
     tabla = tabla.find_next('table')
     if not tabla or not tabla.tbody: return []
     rows = tabla.tbody.find_all('tr')
-    for i, row in enumerate(rows, 1):
+    for row in rows:
         cols = row.find_all('td')
         if not cols: continue
         itinerarios.append({
@@ -84,18 +76,22 @@ def scrape_itinerarios(html: str, tipo_tarifa: str) -> List[Dict]:
         })
     return itinerarios
 
-def obtener_todos_los_viajes(origen_input: Union[str, int], destino_input: Union[str, int]) -> Tuple[Optional[List[Dict]], Optional[str], int, int]:
-    # Convertimos nombres a IDs
+# Modificado para aceptar fecha personalizada
+def obtener_todos_los_viajes(origen_input, destino_input, fecha_str: Optional[str] = None):
     id_origen = resolver_id_estacion(origen_input)
     id_destino = resolver_id_estacion(destino_input)
 
-    if not id_origen: return None, f"Estación origen '{origen_input}' no encontrada", 0, 0
-    if not id_destino: return None, f"Estación destino '{destino_input}' no encontrada", 0, 0
+    if not id_origen: return None, f"Origen no encontrado: {origen_input}", 0, 0
+    if not id_destino: return None, f"Destino no encontrado: {destino_input}", 0, 0
 
+    # Si no hay fecha, usamos HOY
     ahora_chile = datetime.now(TZ_CHILE)
-    fecha_hoy = ahora_chile.strftime("%Y-%m-%d")
-    
-    url = f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1&ida=1&origen={id_origen}&destino={id_destino}&salida={fecha_hoy}&hran=1"
+    if not fecha_str:
+        fecha_consulta = ahora_chile.strftime("%Y-%m-%d")
+    else:
+        fecha_consulta = fecha_str # Formato esperado YYYY-MM-DD
+
+    url = f"https://www.efe.cl/planificador/?empresa=1&hsalida=1&hregreso=&usuario=1&ida=1&origen={id_origen}&destino={id_destino}&salida={fecha_consulta}&hran=1"
     
     try:
         response = requests.get(url, timeout=10)
@@ -104,48 +100,30 @@ def obtener_todos_los_viajes(origen_input: Union[str, int], destino_input: Union
     
     baja = scrape_itinerarios(response.text, "Baja")
     alta = scrape_itinerarios(response.text, "Alta")
-    return sorted(baja + alta, key=lambda x: x['salida']), None, id_origen, id_destino
-
-# --- ENDPOINTS ---
-
-@app.get("/itinerarios/ahora/siri")
-def itinerarios_siri(
-    origen: str = Query(..., description="Nombre o ID origen"), 
-    destino: str = Query(..., description="Nombre o ID destino")
-):
-    todos, error, id_org, id_dst = obtener_todos_los_viajes(origen, destino)
-    
-    if error: return JSONResponse(status_code=500, content={"error": error})
-    
-    ahora = datetime.now(TZ_CHILE)
-    proximos = []
-    for t in todos:
-        try:
-            h, m = map(int, t['salida'].split(':'))
-            if ahora.replace(hour=h, minute=m, second=0) >= ahora:
-                t['valor_estudiante'] = calcular_tarifa_estudiante(t['valor'], id_org, id_dst)
-                proximos.append(t)
-        except: continue
-        
-    if not proximos: mensaje = "No quedan trenes por hoy."
-    else:
-        tren = proximos[0]
-        mensaje = f"Próximo tren a las {tren['salida']}. Tarifa estudiante: {tren['valor_estudiante']} pesos."
-    return {"mensaje": mensaje}
+    # Retornamos también la fecha usada para mostrarla en el HTML
+    return sorted(baja + alta, key=lambda x: x['salida']), None, id_origen, id_destino, fecha_consulta
 
 @app.get("/itinerarios/visual", response_class=HTMLResponse)
 def itinerarios_visual(
     request: Request, 
-    origen: str = Query(..., description="Nombre o ID origen"), 
-    destino: str = Query(..., description="Nombre o ID destino")
+    origen: str = Query(...), 
+    destino: str = Query(...),
+    fecha: Optional[str] = Query(None, description="Fecha formato YYYY-MM-DD")
 ):
-    todos, error, id_org, id_dst = obtener_todos_los_viajes(origen, destino)
+    todos, error, id_org, id_dst, fecha_usada = obtener_todos_los_viajes(origen, destino, fecha)
     
+    ahora = datetime.now(TZ_CHILE)
+    es_hoy = fecha_usada == ahora.strftime("%Y-%m-%d")
+    
+    # Formatear la fecha para que se vea bonita en el título (ej: 12/02/2026)
+    fecha_titulo = datetime.strptime(fecha_usada, "%Y-%m-%d").strftime("%d/%m/%Y")
+
     contexto = {
         "request": request,
         "origen": DESTINOS.get(id_org, origen),
         "destino": DESTINOS.get(id_dst, destino),
-        "hora_actual": datetime.now(TZ_CHILE).strftime("%H:%M"),
+        "hora_actual": ahora.strftime("%H:%M"),
+        "fecha_titulo": "Hoy" if es_hoy else fecha_titulo,
         "pasados": [],
         "proximos": []
     }
@@ -154,21 +132,23 @@ def itinerarios_visual(
         contexto["error"] = error
         return templates.TemplateResponse("visual.html", contexto)
 
-    ahora = datetime.now(TZ_CHILE)
-
     for item in todos:
-        try:
-            h, m = map(int, item['salida'].split(':'))
-            hora_tren = ahora.replace(hour=h, minute=m, second=0)
-            
-            tren = item.copy()
-            # Calculamos tarifa usando los IDs numéricos resueltos
-            tren['valor_estudiante'] = calcular_tarifa_estudiante(tren['valor'], id_org, id_dst)
-            
-            if hora_tren < ahora:
-                contexto["pasados"].append(tren)
-            else:
-                contexto["proximos"].append(tren)
-        except: continue
+        tren = item.copy()
+        tren['valor_estudiante'] = calcular_tarifa_estudiante(tren['valor'], id_org, id_dst)
+        
+        # Lógica de Pasado/Futuro
+        if es_hoy:
+            # Si es hoy, comparamos con la hora actual
+            try:
+                h, m = map(int, item['salida'].split(':'))
+                hora_tren = ahora.replace(hour=h, minute=m, second=0)
+                if hora_tren < ahora:
+                    contexto["pasados"].append(tren)
+                else:
+                    contexto["proximos"].append(tren)
+            except: continue
+        else:
+            # Si NO es hoy (es futuro), TODOS son próximos
+            contexto["proximos"].append(tren)
             
     return templates.TemplateResponse("visual.html", contexto)

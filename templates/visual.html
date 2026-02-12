@@ -1,178 +1,263 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Itinerario TNE</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Itinerario EFE</title>
     <style>
+      :root {
+        --bg-color: #f2f2f7;
+        --card-bg: #ffffff;
+        --text-main: #000000;
+        --text-sub: #8e8e93;
+        --accent: #007aff;
+        --price: #34c759;
+        --price-old: #c7c7cc;
+        --past-bg: #fff0f0;
+        --past-text: #cfafaf;
+        --past-accent: #e57373;
+      }
+      @media (prefers-color-scheme: dark) {
         :root {
-            --bg-color: #F2F2F7;
-            --card-bg: #FFFFFF;
-            --text-main: #000000;
-            --text-sub: #8E8E93;
-            --accent: #007AFF;
-            --price: #34C759;
-            --price-old: #C7C7CC;
-            --past-bg: #FFF0F0;
-            --past-text: #CFAFAF;
-            --past-accent: #E57373;
+          --bg-color: #000000;
+          --card-bg: #1c1c1e;
+          --text-main: #ffffff;
+          --text-sub: #8e8e93;
+          --price-old: #48484a;
+          --past-bg: #2c1b1b;
+          --past-text: #6e5e5e;
+          --past-accent: #8e4444;
         }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-color: #000000;
-                --card-bg: #1C1C1E;
-                --text-main: #FFFFFF;
-                --text-sub: #8E8E93;
-                --price-old: #48484A;
-                --past-bg: #2C1B1B;
-                --past-text: #6E5E5E;
-                --past-accent: #8E4444;
-            }
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        margin: 0;
+        padding: 16px;
+        padding-bottom: 40px;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding-top: 10px;
+      }
+      .route {
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .tne-badge {
+        background: #007aff;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        vertical-align: middle;
+      }
+      
+      .card {
+        background-color: var(--card-bg);
+        border-radius: 14px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      }
+      
+      /* ESTILOS ACORDEÓN */
+      details {
+        margin-bottom: 20px;
+      }
+      summary {
+        list-style: none;
+        text-align: center;
+        padding: 10px;
+        background-color: rgba(128, 128, 128, 0.1);
+        border-radius: 8px;
+        color: var(--text-sub);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-bottom: 10px;
+      }
+      summary::-webkit-details-marker {
+        display: none;
+      }
+      summary:after {
+        content: ' ▼';
+        font-size: 10px;
+      }
+      details[open] summary:after {
+        content: ' ▲';
+      }
+      
+      /* ESTILOS PASADOS */
+      .card.pasado {
+        background-color: var(--past-bg);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+      }
+      .card.pasado .time-big {
+        text-decoration: line-through;
+        opacity: 0.6;
+        color: var(--past-accent);
+      }
+      .card.pasado .price-student {
+        color: var(--past-text);
+      }
+      .card.pasado .badge {
+        opacity: 0.5;
+        filter: grayscale(100%);
+      }
+      
+      .left-info {
+        display: flex;
+        flex-direction: column;
+      }
+      .time-big {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+      }
+      .time-sub {
+        font-size: 13px;
+        color: var(--text-sub);
+      }
+      
+      .right-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      
+      .price-container {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+      }
+      .price-original {
+        font-size: 11px;
+        text-decoration: line-through;
+        color: var(--price-old);
+        margin-bottom: -2px;
+      }
+      .price-student {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--price);
+      }
+      
+      .duration-text {
+        font-size: 11px;
+        color: var(--text-sub);
+        margin-top: 2px;
+        margin-bottom: 2px;
+        font-weight: 500;
+      }
+      
+      .badge {
+        font-size: 10px;
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-weight: 700;
+        text-transform: uppercase;
+        margin-top: 4px;
+      }
+      .badge.Alta {
+        background: #ffd60a;
+        color: black;
+      }
+      .badge.Baja {
+        background: #e5e5ea;
+        color: black;
+      }
+      @media (prefers-color-scheme: dark) {
+        .badge.Baja {
+          background: #3a3a3c;
+          color: white;
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0; padding: 16px; padding-bottom: 40px;
-        }
-        .header { text-align: center; margin-bottom: 20px; padding-top: 10px; }
-        .route { font-size: 18px; font-weight: 700; }
-        .tne-badge { background: #007AFF; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; vertical-align: middle; }
-        
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 14px;
-            padding: 12px 16px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        }
-
-        /* ESTILOS ACORDEÓN */
-        details { margin-bottom: 20px; }
-        summary {
-            list-style: none;
-            text-align: center;
-            padding: 10px;
-            background-color: rgba(128, 128, 128, 0.1);
-            border-radius: 8px;
-            color: var(--text-sub);
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-        summary::-webkit-details-marker { display: none; }
-        summary:after { content: " ▼"; font-size: 10px; }
-        details[open] summary:after { content: " ▲"; }
-
-        /* ESTILOS PASADOS */
-        .card.pasado { background-color: var(--past-bg); border: 1px solid rgba(0,0,0,0.05); }
-        .card.pasado .time-big { text-decoration: line-through; opacity: 0.6; color: var(--past-accent); }
-        .card.pasado .price-student { color: var(--past-text); }
-        .card.pasado .badge { opacity: 0.5; filter: grayscale(100%); }
-
-        .left-info { display: flex; flex-direction: column; }
-        .time-big { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
-        .time-sub { font-size: 13px; color: var(--text-sub); }
-
-        .right-info { display: flex; flex-direction: column; align-items: flex-end; }
-        
-        .price-container { display: flex; flex-direction: column; align-items: flex-end; }
-        .price-original { font-size: 11px; text-decoration: line-through; color: var(--price-old); margin-bottom: -2px;}
-        .price-student { font-size: 18px; font-weight: 700; color: var(--price); }
-
-        .duration-text {
-            font-size: 11px;
-            color: var(--text-sub);
-            margin-top: 2px;
-            margin-bottom: 2px;
-            font-weight: 500;
-        }
-
-        .badge { font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 700; text-transform: uppercase; margin-top: 4px; }
-        .badge.Alta { background: #FFD60A; color: black; }
-        .badge.Baja { background: #E5E5EA; color: black; }
-        @media (prefers-color-scheme: dark) { .badge.Baja { background: #3A3A3C; color: white; } }
-        
-        .empty-msg { text-align: center; color: var(--text-sub); margin-top: 40px; }
-
-        /* ESTILO DEL FOOTER (CRÉDITOS) */
-        .footer {
-            text-align: center;
-            margin-top: 40px;
-            font-size: 11px;
-            color: var(--text-sub);
-            opacity: 0.6;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-        }
+      }
+      
+      .empty-msg {
+        text-align: center;
+        color: var(--text-sub);
+        margin-top: 40px;
+      }
+      
+      /* ESTILO DEL FOOTER (CRÉDITOS) */
+      .footer {
+        text-align: center;
+        margin-top: 40px;
+        font-size: 11px;
+        color: var(--text-sub);
+        opacity: 0.6;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="header">
-        <div class="route">{{ origen }} ➝ {{ destino }} <span class="tne-badge">TNE</span></div>
-        <div style="font-size: 13px; color: gray;">Actualizado: {{ hora_actual }}</div>
+      <div style="font-size: 12px; color: var(--accent); font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">🗓️ {{ fecha_titulo }}</div>
+
+      <div class="route">
+        {{ origen }} ➝ {{ destino }}
+        <span class="tne-badge">TNE</span>
+      </div>
+
+      <div style="font-size: 13px; color: gray; margin-top: 5px;">Actualizado: {{ hora_actual }}</div>
     </div>
 
     {% if error %}
-        <div style="text-align:center; color: red;">{{ error }}</div>
+      <div style="text-align:center; color: red;">{{ error }}</div>
     {% else %}
-        
-        {% if pasados %}
+      {% if pasados %}
         <details>
-            <summary>Ver {{ pasados|length }} viajes anteriores</summary>
-            {% for tren in pasados %}
+          <summary>Ver {{ pasados|length }} viajes anteriores</summary>
+          {% for tren in pasados %}
             <div class="card pasado">
-                <div class="left-info">
-                    <span class="time-big">{{ tren.salida }}</span>
-                    <span class="time-sub">Llegada {{ tren.llegada }}</span>
+              <div class="left-info">
+                <span class="time-big">{{ tren.salida }}</span>
+                <span class="time-sub">Llegada {{ tren.llegada }}</span>
+              </div>
+              <div class="right-info">
+                <div class="price-container">
+                  <span class="price-original">${{ tren.valor }}</span>
+                  <span class="price-student">${{ tren.valor_estudiante }}</span>
                 </div>
-                <div class="right-info">
-                    <div class="price-container">
-                        <span class="price-original">${{ tren.valor }}</span>
-                        <span class="price-student">${{ tren.valor_estudiante }}</span>
-                    </div>
-                    <span class="duration-text">⏱ {{ tren.duracion }}</span>
-                    <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
-                </div>
+                <span class="duration-text">⏱ {{ tren.duracion }}</span>
+                <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
+              </div>
             </div>
-            {% endfor %}
+          {% endfor %}
         </details>
-        {% endif %}
+      {% endif %}
 
-        {% if proximos %}
-            {% for tren in proximos %}
-            <div class="card">
-                <div class="left-info">
-                    <span class="time-big">{{ tren.salida }}</span>
-                    <span class="time-sub">Llegada {{ tren.llegada }}</span>
-                </div>
-                <div class="right-info">
-                    <div class="price-container">
-                        <span class="price-original">${{ tren.valor }}</span>
-                        <span class="price-student">${{ tren.valor_estudiante }}</span>
-                    </div>
-                    <span class="duration-text">⏱ {{ tren.duracion }}</span>
-                    <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
-                </div>
+      {% if proximos %}
+        {% for tren in proximos %}
+          <div class="card">
+            <div class="left-info">
+              <span class="time-big">{{ tren.salida }}</span>
+              <span class="time-sub">Llegada {{ tren.llegada }}</span>
             </div>
-            {% endfor %}
-        {% else %}
-            <div class="empty-msg">
-                <p style="font-size: 40px; margin-bottom: 10px;">😴</p>
-                No hay más trenes por hoy
+            <div class="right-info">
+              <div class="price-container">
+                <span class="price-original">${{ tren.valor }}</span>
+                <span class="price-student">${{ tren.valor_estudiante }}</span>
+              </div>
+              <span class="duration-text">⏱ {{ tren.duracion }}</span>
+              <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
             </div>
-        {% endif %}
-
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-msg">
+          <p style="font-size: 40px; margin-bottom: 10px;">😴</p>No hay más trenes por hoy
+        </div>
+      {% endif %}
     {% endif %}
 
-    <div class="footer">
-        Desarrollado por Matias Molins
-    </div>
-
-</body>
+    <div class="footer">Desarrollado por Matias Molins</div>
+  </body>
 </html>
