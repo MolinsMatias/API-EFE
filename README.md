@@ -4,11 +4,14 @@ API-EFE es una aplicación desarrollada con **FastAPI** que permite consultar lo
 
 ## 🚀 Características
 
+- **API JSON:** Endpoint REST que devuelve itinerarios en formato JSON, ideal para integrar en cualquier aplicación.
+- **Interfaz Visual (HTML):** Página web optimizada para consultar horarios directamente desde el navegador o Atajos de iOS.
 - **Consulta de Itinerarios:** Busca horarios de trenes entre distintas estaciones habilitadas (Estación Central, San Bernardo, Rancagua, Buin Zoo, etc.).
-- **Búsqueda por Fecha:** Permite visualizar los horarios de trenes para el día actual o para una fecha futura.
-- **Interfaz Visual:** Proporciona una interfaz web amigable renderizada con plantillas de Jinja2.
-- **Cálculo de Tarifas de Estudiante:** Calcula automáticamente la tarifa con descuento para estudiantes dependiendo del tramo seleccionado.
+- **Búsqueda por Fecha:** Permite consultar los horarios para el día actual o para una fecha futura.
+- **Tarifas Normal y Estudiante:** Muestra ambos precios. En la vista visual, el parámetro `tarifa` permite alternar entre vista de estudiante (con TNE) y normal.
+- **Lista de Estaciones:** Endpoint dedicado para consultar todas las estaciones soportadas con sus IDs.
 - **Estado de Trenes (Pasados/Próximos):** Diferencia visualmente los trenes que ya pasaron de los que están próximos a salir según la hora local de Chile.
+- **Documentación Automática:** Swagger UI y ReDoc disponibles en `/docs` y `/redoc`.
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -59,32 +62,109 @@ El proyecto incluye un `Dockerfile` listo para usar. Para levantar la aplicació
 
 2. **Ejecutar el contenedor:**
    ```bash
-   docker run -d -p 8000:8000 api-efe
+   docker run -d -p 8000:8080 api-efe
    ```
 
-## 📍 Endpoints Principales
+## 📍 Endpoints
 
-- `GET /itinerarios/visual`
-  - **Descripción:** Retorna una página HTML con los horarios de los trenes consultados.
-  - **Parámetros Query:**
-    - `origen` (str, obligatorio): Nombre o ID de la estación de origen (ej. "Estación Central").
-    - `destino` (str, obligatorio): Nombre o ID de la estación de destino (ej. "Rancagua").
-    - `fecha` (str, opcional): Fecha de la consulta en formato `YYYY-MM-DD`. Si no se provee, asume la fecha de hoy en Chile.
+### `GET /estaciones`
+
+Devuelve la lista de estaciones soportadas con su ID interno.
+
+**Ejemplo de respuesta:**
+```json
+{
+  "estaciones": [
+    { "id": 1, "nombre": "Estación Central" },
+    { "id": 3, "nombre": "San Bernardo" },
+    { "id": 6, "nombre": "Buin Zoo" }
+  ]
+}
+```
+
+---
+
+### `GET /itinerarios`
+
+Devuelve los viajes disponibles entre dos estaciones en **formato JSON**, incluyendo precios normal y estudiante.
+
+| Parámetro | Tipo | Obligatorio | Descripción |
+|-----------|------|:-----------:|-------------|
+| `origen`  | str  | ✅ | Nombre o ID de la estación de origen |
+| `destino` | str  | ✅ | Nombre o ID de la estación de destino |
+| `fecha`   | str  | ❌ | Fecha en formato `YYYY-MM-DD` (default: hoy en Chile) |
+
+**Ejemplo:**
+```
+GET /itinerarios?origen=1&destino=13
+GET /itinerarios?origen=Estación Central&destino=Rancagua&fecha=2026-07-20
+```
+
+**Ejemplo de respuesta:**
+```json
+{
+  "origen": { "id": 1, "nombre": "Estación Central" },
+  "destino": { "id": 13, "nombre": "Rancagua" },
+  "fecha": "2026-07-15",
+  "viajes": [
+    {
+      "salida": "06:30",
+      "llegada": "08:05",
+      "duracion": "1h 35min",
+      "tarifa": "Baja",
+      "precio_normal": 2100,
+      "precio_estudiante": 1113
+    }
+  ]
+}
+```
+
+---
+
+### `GET /itinerarios/visual`
+
+Devuelve una **página HTML** con los horarios de trenes. Ideal para consumir desde Atajos de iOS o para visualización directa en el navegador.
+
+| Parámetro | Tipo | Obligatorio | Descripción |
+|-----------|------|:-----------:|-------------|
+| `origen`  | str  | ✅ | Nombre o ID de la estación de origen |
+| `destino` | str  | ✅ | Nombre o ID de la estación de destino |
+| `fecha`   | str  | ❌ | Fecha en formato `YYYY-MM-DD` (default: hoy en Chile) |
+| `tarifa`  | str  | ❌ | `estudiante` (default) o `normal` |
+
+**Ejemplo:**
+```
+GET /itinerarios/visual?origen=Estación Central&destino=Rancagua
+GET /itinerarios/visual?origen=1&destino=13&tarifa=normal
+```
 
 ## 🚉 Estaciones Soportadas
 
-Actualmente, el sistema mapea internamente las siguientes estaciones (IDs comunes):
-- Estación Central
-- San Bernardo
-- Buin Zoo
-- Buin
-- Linderos
-- Paine
-- Hospital
-- San Francisco
-- Graneros
-- Rancagua
+Actualmente, el sistema mapea internamente las siguientes estaciones. Se puede utilizar el **nombre** o el **ID** como parámetro de origen/destino:
+
+| ID | Estación |
+|----|----------|
+| 1  | Estación Central |
+| 3  | San Bernardo |
+| 6  | Buin Zoo |
+| 7  | Buin |
+| 8  | Linderos |
+| 9  | Paine |
+| 10 | Hospital |
+| 11 | San Francisco |
+| 12 | Graneros |
+| 13 | Rancagua |
+
+> **Nota:** Los IDs no son consecutivos porque corresponden a los identificadores internos utilizados por el planificador de EFE.
+
+## 📖 Documentación Interactiva
+
+FastAPI genera documentación automática. Una vez levantada la aplicación, podés acceder a:
+
+- **Swagger UI:** `http://localhost:8000/docs`
+- **ReDoc:** `http://localhost:8000/redoc`
 
 ---
 
 *Nota: Este proyecto realiza scraping sobre el sitio público de EFE para fines informativos.*
+

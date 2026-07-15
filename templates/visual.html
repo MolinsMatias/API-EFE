@@ -203,7 +203,7 @@
 
       <div class="route">
         {{ origen }} ➝ {{ destino }}
-        <span class="tne-badge">TNE</span>
+        {% if tarifa == 'estudiante' %}<span class="tne-badge">TNE</span>{% endif %}
       </div>
 
       <div style="font-size: 13px; color: gray; margin-top: 5px;">Actualizado: {{ hora_actual }}</div>
@@ -223,8 +223,12 @@
               </div>
               <div class="right-info">
                 <div class="price-container">
-                  <span class="price-original">${{ tren.valor }}</span>
-                  <span class="price-student">${{ tren.valor_estudiante }}</span>
+                  {% if tarifa == 'estudiante' %}
+                    <span class="price-original">${{ tren.valor }}</span>
+                    <span class="price-student">${{ tren.valor_estudiante }}</span>
+                  {% else %}
+                    <span class="price-student">${{ tren.valor }}</span>
+                  {% endif %}
                 </div>
                 <span class="duration-text">⏱ {{ tren.duracion }}</span>
                 <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
@@ -243,8 +247,12 @@
             </div>
             <div class="right-info">
               <div class="price-container">
-                <span class="price-original">${{ tren.valor }}</span>
-                <span class="price-student">${{ tren.valor_estudiante }}</span>
+                {% if tarifa == 'estudiante' %}
+                  <span class="price-original">${{ tren.valor }}</span>
+                  <span class="price-student">${{ tren.valor_estudiante }}</span>
+                {% else %}
+                  <span class="price-student">${{ tren.valor }}</span>
+                {% endif %}
               </div>
               <span class="duration-text">⏱ {{ tren.duracion }}</span>
               <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>

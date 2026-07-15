@@ -103,20 +103,86 @@ def obtener_todos_los_viajes(origen_input, destino_input, fecha_str: Optional[st
     # Retornamos también la fecha usada para mostrarla en el HTML
     return sorted(baja + alta, key=lambda x: x['salida']), None, id_origen, id_destino, fecha_consulta
 
-@app.get("/itinerarios/visual", response_class=HTMLResponse)
+# --- ENDPOINTS ---
+
+@app.get("/estaciones", summary="Lista de estaciones disponibles",
+         description="Devuelve todas las estaciones soportadas con su ID interno y nombre.")
+def listar_estaciones():
+    return {
+        "estaciones": [{"id": id_est, "nombre": nombre} for id_est, nombre in DESTINOS.items()]
+    }
+
+
+@app.get("/itinerarios", summary="Itinerarios en JSON",
+         description="Devuelve los viajes disponibles entre dos estaciones en formato JSON, con precios normal y estudiante.")
+def itinerarios_json(
+    origen: str = Query(..., description="Nombre o ID de la estación de origen"),
+    destino: str = Query(..., description="Nombre o ID de la estación de destino"),
+    fecha: Optional[str] = Query(None, description="Fecha en formato YYYY-MM-DD (default: hoy en Chile)")
+):
+    resultado = obtener_todos_los_viajes(origen, destino, fecha)
+
+    # obtener_todos_los_viajes retorna 4 valores en caso de error, 5 en caso de éxito
+    if len(resultado) == 4:
+        _, error, _, _ = resultado
+        return JSONResponse(status_code=404, content={"error": error})
+
+    todos, error, id_org, id_dst, fecha_usada = resultado
+
+    if error:
+        return JSONResponse(status_code=500, content={"error": error})
+
+    viajes = []
+    for item in todos:
+        precio_normal = int(item['valor']) if item['valor'].isdigit() else 0
+        precio_est_str = calcular_tarifa_estudiante(item['valor'], id_org, id_dst)
+        precio_estudiante = int(precio_est_str.replace('.', '')) if precio_est_str.replace('.', '').isdigit() else 0
+
+        viajes.append({
+            "salida": item['salida'],
+            "llegada": item['llegada'],
+            "duracion": item['duracion'],
+            "tarifa": item['tarifa'],
+            "precio_normal": precio_normal,
+            "precio_estudiante": precio_estudiante
+        })
+
+    return {
+        "origen": {"id": id_org, "nombre": DESTINOS.get(id_org, origen)},
+        "destino": {"id": id_dst, "nombre": DESTINOS.get(id_dst, destino)},
+        "fecha": fecha_usada,
+        "viajes": viajes
+    }
+
+
+@app.get("/itinerarios/visual", response_class=HTMLResponse,
+         summary="Itinerarios visual (HTML)",
+         description="Devuelve una página HTML con los horarios de trenes, optimizada para Atajos de iOS.")
 def itinerarios_visual(
     request: Request, 
-    origen: str = Query(...), 
-    destino: str = Query(...),
-    fecha: Optional[str] = Query(None, description="Fecha formato YYYY-MM-DD")
+    origen: str = Query(..., description="Nombre o ID de la estación de origen"),
+    destino: str = Query(..., description="Nombre o ID de la estación de destino"),
+    fecha: Optional[str] = Query(None, description="Fecha en formato YYYY-MM-DD (default: hoy en Chile)"),
+    tarifa: str = Query("estudiante", description="Tipo de tarifa a mostrar: 'estudiante' o 'normal'")
 ):
-    todos, error, id_org, id_dst, fecha_usada = obtener_todos_los_viajes(origen, destino, fecha)
-    
+    resultado = obtener_todos_los_viajes(origen, destino, fecha)
+
+    if len(resultado) == 4:
+        _, error, _, _ = resultado
+        contexto = {"request": request, "origen": origen, "destino": destino,
+                     "hora_actual": "", "fecha_titulo": "", "error": error,
+                     "pasados": [], "proximos": [], "tarifa": tarifa}
+        return templates.TemplateResponse("visual.html", contexto)
+
+    todos, error, id_org, id_dst, fecha_usada = resultado
+
     ahora = datetime.now(TZ_CHILE)
     es_hoy = fecha_usada == ahora.strftime("%Y-%m-%d")
     
     # Formatear la fecha para que se vea bonita en el título (ej: 12/02/2026)
     fecha_titulo = datetime.strptime(fecha_usada, "%Y-%m-%d").strftime("%d/%m/%Y")
+
+    mostrar_estudiante = tarifa.lower() == "estudiante"
 
     contexto = {
         "request": request,
@@ -124,6 +190,7 @@ def itinerarios_visual(
         "destino": DESTINOS.get(id_dst, destino),
         "hora_actual": ahora.strftime("%H:%M"),
         "fecha_titulo": "Hoy" if es_hoy else fecha_titulo,
+        "tarifa": "estudiante" if mostrar_estudiante else "normal",
         "pasados": [],
         "proximos": []
     }
@@ -134,7 +201,8 @@ def itinerarios_visual(
 
     for item in todos:
         tren = item.copy()
-        tren['valor_estudiante'] = calcular_tarifa_estudiante(tren['valor'], id_org, id_dst)
+        if mostrar_estudiante:
+            tren['valor_estudiante'] = calcular_tarifa_estudiante(tren['valor'], id_org, id_dst)
         
         # Lógica de Pasado/Futuro
         if es_hoy:
