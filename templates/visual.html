@@ -143,7 +143,7 @@
         line-height: 1.2;
       }
 
-      /* INVERT BUTTON (iOS HIG ICON BUTTON) */
+      /* INVERT BUTTON (PURE HTML <a> TAG COMPATIBLE WITH IOS SHORTCUTS) */
       .invert-btn {
         width: 36px;
         height: 36px;
@@ -158,6 +158,7 @@
         transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
         flex-shrink: 0;
         outline: none;
+        text-decoration: none;
       }
 
       .invert-btn:active {
@@ -171,7 +172,7 @@
         fill: currentColor;
       }
 
-      /* iOS NATIVE SEGMENTED CONTROL */
+      /* iOS NATIVE SEGMENTED CONTROL (PURE HTML <a> TAGS) */
       .segmented-control {
         display: flex;
         background: var(--seg-bg);
@@ -192,6 +193,8 @@
         border: none;
         cursor: pointer;
         transition: all 0.2s ease;
+        text-decoration: none;
+        display: block;
       }
 
       .seg-item.active {
@@ -524,12 +527,12 @@
             <span class="station-title">{{ origen }}</span>
           </div>
 
-          <!-- BOTÓN INVERTIR RUTA (iOS HIG ICON) -->
-          <button class="invert-btn" id="btnInvert" title="Invertir ruta" aria-label="Invertir ruta">
+          <!-- BOTÓN INVERTIR RUTA (HIPERVÍNCULO NATIVO A PRUEBA DE BLOQUEOS EN IOS) -->
+          <a href="/itinerarios/visual?origen={{ destino_id }}&destino={{ origen_id }}&usuario={{ usuario }}{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="invert-btn" id="btnInvert" title="Invertir ruta" aria-label="Invertir ruta">
             <svg viewBox="0 0 24 24">
               <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
             </svg>
-          </button>
+          </a>
 
           <div class="station-col dest">
             <span class="station-hint">Destino</span>
@@ -537,17 +540,17 @@
           </div>
         </div>
 
-        <!-- SEGMENTED CONTROL -->
+        <!-- SEGMENTED CONTROL (ENLACES NATIVOS SIN JAVASCRIPT) -->
         <div class="segmented-control">
-          <button class="seg-item {% if usuario == 2 %}active{% endif %}" onclick="setUsuario(2)">
+          <a href="/itinerarios/visual?origen={{ origen_id }}&destino={{ destino_id }}&usuario=2{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="seg-item {% if usuario == 2 %}active{% endif %}">
             Estudiante
-          </button>
-          <button class="seg-item {% if usuario == 1 %}active{% endif %}" onclick="setUsuario(1)">
+          </a>
+          <a href="/itinerarios/visual?origen={{ origen_id }}&destino={{ destino_id }}&usuario=1{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="seg-item {% if usuario == 1 %}active{% endif %}">
             General
-          </button>
-          <button class="seg-item {% if usuario == 3 %}active{% endif %}" onclick="setUsuario(3)">
+          </a>
+          <a href="/itinerarios/visual?origen={{ origen_id }}&destino={{ destino_id }}&usuario=3{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="seg-item {% if usuario == 3 %}active{% endif %}">
             Adulto Mayor
-          </button>
+          </a>
         </div>
       </div>
 
@@ -580,16 +583,16 @@
         {% endif %}
 
         {% if proximos %}
-          <!-- HERO CARD: PRÓXIMO TREN (LIVE ACTIVITY STYLE) -->
+          <!-- HERO CARD: PRÓXIMO TREN (CALCULADO EN SERVIDOR + MEJORA EN JS) -->
           {% set next_train = proximos[0] %}
           <div class="hero-card" id="heroCard" data-departure="{{ next_train.salida }}">
             <div class="hero-top">
               <div class="hero-label">
                 <span>🚆</span> Próximo tren
               </div>
-              <div class="countdown-badge" id="heroCountdown">
+              <div class="countdown-badge {% if next_train.es_urgente %}urgent{% endif %}" id="heroCountdown" {% if not es_hoy %}style="display:none;"{% endif %}>
                 <span class="status-dot"></span>
-                <span id="heroCountdownText">Calculando...</span>
+                <span id="heroCountdownText">{{ next_train.relativo if next_train.relativo else 'Próxima salida' }}</span>
               </div>
             </div>
 
@@ -625,7 +628,9 @@
                     <span class="card-departure">{{ tren.salida }}</span>
                     <span class="card-arrival">Llegada {{ tren.llegada }}</span>
                   </div>
-                  <div class="card-rel-time item-countdown" data-departure="{{ tren.salida }}"></div>
+                  <div class="card-rel-time item-countdown" data-departure="{{ tren.salida }}">
+                    {{ tren.relativo_corto }}
+                  </div>
                 </div>
                 <div class="train-right">
                   <span class="card-price">${{ tren.valor }}</span>
@@ -651,47 +656,14 @@
 
     </div>
 
-    <!-- CLIENT SCRIPT -->
+    <!-- CLIENT SCRIPT (PROGRESSIVE ENHANCEMENT - SOLO SI JS ESTÁ HABILITADO) -->
     <script>
-      const ORIGEN_ID = "{{ origen_id }}";
-      const DESTINO_ID = "{{ destino_id }}";
       const ES_HOY = {% if es_hoy %}true{% else %}false{% endif %};
 
-      // 1. Invertir Ruta
-      document.getElementById('btnInvert')?.addEventListener('click', function() {
-        this.style.transform = 'scale(0.88) rotate(180deg)';
-        const params = new URLSearchParams(window.location.search);
-        params.set('origen', DESTINO_ID);
-        params.set('destino', ORIGEN_ID);
-        setTimeout(() => {
-          window.location.search = params.toString();
-        }, 150);
-      });
-
-      // 2. Cambiar Tipo de Usuario
-      function setUsuario(userId) {
-        const params = new URLSearchParams(window.location.search);
-        params.set('usuario', userId);
-        window.location.search = params.toString();
-      }
-
-      // 3. Contador en Tiempo Real
       function updateCountdowns() {
+        if (!ES_HOY) return;
         const now = new Date();
         const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-        const clockEl = document.getElementById('liveClock');
-        if (clockEl) {
-          const hh = String(now.getHours()).padStart(2, '0');
-          const mm = String(now.getMinutes()).padStart(2, '0');
-          clockEl.textContent = `Actualizado ${hh}:${mm}`;
-        }
-
-        if (!ES_HOY) {
-          const heroCountdown = document.getElementById('heroCountdown');
-          if (heroCountdown) heroCountdown.style.display = 'none';
-          return;
-        }
 
         const heroCard = document.getElementById('heroCard');
         if (heroCard) {

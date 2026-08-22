@@ -233,17 +233,46 @@ def itinerarios_visual(
         if tren['valor'].isdigit():
             tren['valor'] = f"{int(tren['valor']):,}".replace(',', '.')
         
-        # Lógica de Pasado/Futuro
+        # Lógica de Pasado/Futuro y tiempo relativo calculado en el servidor
         if es_hoy:
             try:
                 h, m = map(int, item['salida'].split(':'))
                 hora_tren = ahora.replace(hour=h, minute=m, second=0)
+                diff_minutos = int((hora_tren - ahora).total_seconds() / 60)
+                tren['minutos_restantes'] = diff_minutos
+                
+                if diff_minutos > 60:
+                    hrs = diff_minutos // 60
+                    mins = diff_minutos % 60
+                    tren['relativo'] = f"Sale en {hrs}h {mins}m"
+                    tren['relativo_corto'] = f"En {hrs}h {mins}m"
+                    tren['es_urgente'] = False
+                elif diff_minutos > 5:
+                    tren['relativo'] = f"Sale en {diff_minutos} min"
+                    tren['relativo_corto'] = f"En {diff_minutos} min"
+                    tren['es_urgente'] = False
+                elif diff_minutos > 0:
+                    tren['relativo'] = f"Sale en {diff_minutos} min"
+                    tren['relativo_corto'] = f"En {diff_minutos} min"
+                    tren['es_urgente'] = True
+                elif diff_minutos == 0:
+                    tren['relativo'] = "Saliendo ahora"
+                    tren['relativo_corto'] = "Saliendo ahora"
+                    tren['es_urgente'] = True
+                else:
+                    tren['relativo'] = f"Partió hace {abs(diff_minutos)} min"
+                    tren['relativo_corto'] = ""
+                    tren['es_urgente'] = True
+
                 if hora_tren < ahora:
                     contexto["pasados"].append(tren)
                 else:
                     contexto["proximos"].append(tren)
             except: continue
         else:
+            tren['relativo'] = ""
+            tren['relativo_corto'] = ""
+            tren['es_urgente'] = False
             contexto["proximos"].append(tren)
             
     return templates.TemplateResponse(request=request, name="visual.html", context=contexto)
