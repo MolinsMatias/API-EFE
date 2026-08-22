@@ -10,46 +10,50 @@
     <title>{{ origen }} ➝ {{ destino }}</title>
     <style>
       :root {
-        --bg-color: #F2F2F7;
-        --card-bg: #FFFFFF;
-        --card-border: rgba(0, 0, 0, 0.08);
-        --past-card-bg: #FFF1F0;
+        --bg-color: radial-gradient(circle at 15% 15%, rgba(0, 122, 255, 0.12) 0%, transparent 45%), radial-gradient(circle at 85% 75%, rgba(52, 199, 89, 0.10) 0%, transparent 50%), #F2F2F7;
+        --card-bg: rgba(255, 255, 255, 0.75);
+        --card-border: rgba(255, 255, 255, 0.6);
+        --card-specular: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+        --past-card-bg: rgba(255, 241, 240, 0.8);
         --past-border: rgba(255, 59, 48, 0.22);
-        --past-text: #ffffff;
+        --past-text: #361215;
         --text-primary: #000000;
         --text-secondary: #8E8E93;
         --text-tertiary: #C7C7CC;
         --accent: #007AFF;
-        --accent-bg: rgba(0, 122, 255, 0.1);
+        --accent-bg: rgba(0, 122, 255, 0.12);
         --success: #34C759;
-        --success-bg: rgba(52, 199, 89, 0.12);
+        --success-bg: rgba(52, 199, 89, 0.14);
         --warning: #FF9500;
         --warning-bg: rgba(255, 149, 0, 0.12);
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-        --divider: rgba(60, 60, 67, 0.12);
+        --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.05);
+        --shadow-hero: 0 10px 30px -4px rgba(0, 122, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.05);
+        --divider: rgba(60, 60, 67, 0.1);
+        --glass-blur: blur(28px) saturate(190%);
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg-color: #000000;
-          --card-bg: #1C1C1E;
-          --card-border: rgba(255, 255, 255, 0.1);
-          --past-card-bg: rgba(255, 69, 58, 0.05);
-          --past-border: rgba(138, 44, 39, 0.28);
+          --bg-color: radial-gradient(circle at 20% 12%, rgba(10, 132, 255, 0.25) 0%, transparent 45%), radial-gradient(circle at 85% 65%, rgba(88, 86, 214, 0.20) 0%, transparent 50%), radial-gradient(circle at 35% 95%, rgba(48, 209, 88, 0.14) 0%, transparent 45%), #05070B;
+          --card-bg: rgba(28, 28, 30, 0.68);
+          --card-border: rgba(255, 255, 255, 0.14);
+          --card-specular: inset 0 1px 0 rgba(255, 255, 255, 0.22);
+          --past-card-bg: rgba(255, 69, 58, 0.08);
+          --past-border: rgba(138, 44, 39, 0.38);
           --past-text: #8a6462;
           --text-primary: #FFFFFF;
           --text-secondary: #8E8E93;
           --text-tertiary: #48484A;
           --accent: #0A84FF;
-          --accent-bg: rgba(10, 132, 255, 0.15);
+          --accent-bg: rgba(10, 132, 255, 0.18);
           --success: #30D158;
-          --success-bg: rgba(48, 209, 88, 0.15);
+          --success-bg: rgba(48, 209, 88, 0.18);
           --warning: #FF9F0A;
-          --warning-bg: rgba(255, 159, 10, 0.15);
-          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
-          --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
+          --warning-bg: rgba(255, 159, 10, 0.18);
+          --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.45);
+          --shadow-hero: 0 12px 36px -4px rgba(0, 0, 0, 0.7), 0 0 20px rgba(10, 132, 255, 0.22);
           --divider: rgba(84, 84, 88, 0.36);
+          --glass-blur: blur(32px) saturate(200%);
         }
       }
 
@@ -62,7 +66,8 @@
 
       body {
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        background-color: var(--bg-color);
+        background: var(--bg-color);
+        background-attachment: fixed;
         color: var(--text-primary);
         padding: 12px 16px;
         padding-top: calc(env(safe-area-inset-top, 12px) + 8px);
@@ -77,14 +82,16 @@
         margin: 0 auto;
       }
 
-      /* HEADER & ROUTE CARD */
+      /* HEADER CARD (LIQUID GLASS FROSTED SURFACE) */
       .header-card {
         background: var(--card-bg);
-        border-radius: 18px;
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border-radius: 20px;
         padding: 16px 18px;
         margin-bottom: 14px;
-        border: 0.5px solid var(--card-border);
-        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-sm), var(--card-specular);
       }
 
       .meta-bar {
@@ -96,10 +103,10 @@
 
       .date-tag {
         font-size: 12px;
-        font-weight: 600;
+        font-weight: 700;
         color: var(--accent);
         text-transform: uppercase;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.4px;
       }
 
       .update-time {
@@ -130,24 +137,25 @@
       .station-hint {
         font-size: 11px;
         color: var(--text-secondary);
-        font-weight: 500;
+        font-weight: 600;
         text-transform: uppercase;
+        letter-spacing: 0.2px;
         margin-bottom: 2px;
       }
 
       .station-title {
         font-size: 18px;
-        font-weight: 700;
+        font-weight: 800;
         color: var(--text-primary);
         letter-spacing: -0.4px;
         line-height: 1.2;
       }
 
       .route-arrow {
-        color: var(--text-secondary);
+        color: var(--accent);
         font-size: 16px;
-        font-weight: 600;
-        opacity: 0.6;
+        font-weight: 700;
+        opacity: 0.8;
       }
 
       /* USER TARIFF BADGE */
@@ -166,7 +174,7 @@
         border-radius: 8px;
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 5px;
       }
 
       .badge-user.estudiante {
@@ -175,7 +183,7 @@
       }
 
       .badge-user.general {
-        background: rgba(142, 142, 147, 0.12);
+        background: rgba(142, 142, 147, 0.14);
         color: var(--text-secondary);
       }
 
@@ -184,54 +192,95 @@
         color: var(--warning);
       }
 
-      /* HERO CARD (PRÓXIMO TREN) */
+      /* LIVE ACTIVITY HERO CARD (LIQUID GLASS + GLOW) */
       .hero-card {
         background: var(--card-bg);
-        border-radius: 20px;
-        padding: 16px 18px;
-        margin-bottom: 14px;
-        border: 0.5px solid var(--card-border);
-        box-shadow: var(--shadow-md);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border-radius: 22px;
+        padding: 18px 20px;
+        margin-bottom: 16px;
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-hero), var(--card-specular);
+        position: relative;
+        overflow: hidden;
       }
 
       .hero-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
       }
 
       .hero-label {
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 700;
         color: var(--text-secondary);
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
       }
 
       .countdown-badge {
         display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
         background: var(--success-bg);
         color: var(--success);
         font-size: 12px;
         font-weight: 700;
-        padding: 3px 8px;
+        padding: 4px 10px;
         border-radius: 12px;
       }
 
       .countdown-badge.urgent {
-        background: rgba(255, 59, 48, 0.12);
+        background: rgba(255, 59, 48, 0.16);
         color: #FF3B30;
       }
 
+      /* 10/10 LIVE BREATHING PULSE ON STATUS DOT */
       .status-dot {
-        width: 6px;
-        height: 6px;
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
         background: currentColor;
+        display: inline-block;
+        animation: live-pulse 2s infinite cubic-bezier(0.66, 0, 0, 1);
+      }
+
+      @keyframes live-pulse {
+        0% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+        }
+        70% {
+          transform: scale(1);
+          box-shadow: 0 0 0 6px rgba(52, 199, 89, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
+        }
+      }
+
+      .countdown-badge.urgent .status-dot {
+        animation: urgent-pulse 1.2s infinite cubic-bezier(0.66, 0, 0, 1);
+      }
+
+      @keyframes urgent-pulse {
+        0% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.7);
+        }
+        70% {
+          transform: scale(1);
+          box-shadow: 0 0 0 6px rgba(255, 59, 48, 0);
+        }
+        100% {
+          transform: scale(0.95);
+          box-shadow: 0 0 0 0 rgba(255, 59, 48, 0);
+        }
       }
 
       .hero-main {
@@ -242,9 +291,9 @@
       }
 
       .hero-time-big {
-        font-size: 40px;
+        font-size: 42px;
         font-weight: 800;
-        letter-spacing: -1px;
+        letter-spacing: -1.2px;
         color: var(--text-primary);
         line-height: 1;
       }
@@ -256,17 +305,18 @@
       .hero-arrival-sub {
         font-size: 11px;
         color: var(--text-secondary);
-        font-weight: 500;
+        font-weight: 600;
         text-transform: uppercase;
+        letter-spacing: 0.2px;
       }
 
       .hero-arrival-time {
-        font-size: 18px;
-        font-weight: 700;
+        font-size: 19px;
+        font-weight: 800;
         color: var(--text-primary);
       }
 
-      /* TRANSIT LINE */
+      /* ROUTE TRANSIT LINE */
       .transit-line {
         display: flex;
         align-items: center;
@@ -276,8 +326,9 @@
 
       .line-track {
         flex: 1;
-        height: 2px;
+        height: 3px;
         background: var(--divider);
+        border-radius: 2px;
       }
 
       .transit-pill {
@@ -287,8 +338,8 @@
         background: var(--accent-bg);
         color: var(--accent);
         font-size: 11px;
-        font-weight: 600;
-        padding: 3px 8px;
+        font-weight: 700;
+        padding: 3px 9px;
         border-radius: 10px;
       }
 
@@ -296,16 +347,17 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-top: 10px;
+        padding-top: 12px;
         border-top: 0.5px solid var(--divider);
       }
 
       .badge-tarifa {
         font-size: 11px;
-        font-weight: 600;
-        padding: 2px 7px;
-        border-radius: 5px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 6px;
         text-transform: uppercase;
+        letter-spacing: 0.2px;
       }
 
       .badge-tarifa.Alta {
@@ -319,31 +371,33 @@
       }
 
       .hero-price {
-        font-size: 20px;
-        font-weight: 700;
+        font-size: 21px;
+        font-weight: 800;
         color: var(--success);
       }
 
       /* LIST OF TRAINS */
       .section-title {
         font-size: 13px;
-        font-weight: 600;
+        font-weight: 700;
         text-transform: uppercase;
         color: var(--text-secondary);
-        letter-spacing: -0.2px;
-        margin: 16px 4px 8px;
+        letter-spacing: 0.2px;
+        margin: 18px 4px 8px;
       }
 
       .train-card {
         background: var(--card-bg);
-        border-radius: 14px;
-        padding: 12px 14px;
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border-radius: 16px;
+        padding: 13px 15px;
         margin-bottom: 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        border: 0.5px solid var(--card-border);
-        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-sm), var(--card-specular);
       }
 
       .train-left {
@@ -359,7 +413,7 @@
 
       .card-departure {
         font-size: 22px;
-        font-weight: 700;
+        font-weight: 800;
         color: var(--text-primary);
         letter-spacing: -0.5px;
       }
@@ -367,12 +421,13 @@
       .card-arrival {
         font-size: 13px;
         color: var(--text-secondary);
+        font-weight: 500;
       }
 
       .card-rel-time {
         font-size: 12px;
         color: var(--accent);
-        font-weight: 600;
+        font-weight: 700;
         margin-top: 1px;
       }
 
@@ -385,7 +440,7 @@
 
       .card-price {
         font-size: 16px;
-        font-weight: 700;
+        font-weight: 800;
         color: var(--success);
       }
 
@@ -398,9 +453,10 @@
       .duration-label {
         font-size: 11px;
         color: var(--text-secondary);
+        font-weight: 500;
       }
 
-      /* ACCORDION PAST TRAINS (CLEAR CONTRAST IN DARK/LIGHT MODE) */
+      /* ACCORDION PAST TRAINS */
       details {
         margin-bottom: 14px;
       }
@@ -410,14 +466,16 @@
         text-align: center;
         padding: 10px;
         background: var(--card-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
         border-radius: 12px;
         color: var(--text-secondary);
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         margin-bottom: 10px;
-        border: 0.5px solid var(--card-border);
-        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-sm), var(--card-specular);
       }
 
       summary::-webkit-details-marker {
@@ -435,7 +493,7 @@
 
       .train-card.pasado {
         background: var(--past-card-bg);
-        border: 0.5px solid var(--past-border);
+        border: 1px solid var(--past-border);
         box-shadow: var(--shadow-sm);
         opacity: 0.85;
       }
@@ -451,7 +509,7 @@
       }
 
       .train-card.pasado .badge-tarifa {
-        opacity: 0.6;
+        opacity: 0.5;
         filter: grayscale(100%);
       }
 
@@ -460,9 +518,12 @@
         text-align: center;
         padding: 36px 16px;
         background: var(--card-bg);
-        border-radius: 18px;
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border-radius: 20px;
         margin: 16px 0;
-        border: 0.5px solid var(--card-border);
+        border: 1px solid var(--card-border);
+        box-shadow: var(--shadow-sm), var(--card-specular);
       }
 
       .empty-title {
@@ -473,13 +534,13 @@
       }
 
       .error-card {
-        background: rgba(255, 59, 48, 0.1);
-        border: 0.5px solid rgba(255, 59, 48, 0.3);
+        background: rgba(255, 59, 48, 0.12);
+        border: 1px solid rgba(255, 59, 48, 0.3);
         color: #FF3B30;
         padding: 12px 16px;
-        border-radius: 14px;
+        border-radius: 16px;
         text-align: center;
-        font-weight: 600;
+        font-weight: 700;
         font-size: 14px;
         margin: 16px 0;
       }
@@ -489,7 +550,7 @@
         margin-top: 24px;
         font-size: 11px;
         color: var(--text-secondary);
-        opacity: 0.7;
+        opacity: 0.75;
       }
     </style>
   </head>
@@ -557,7 +618,7 @@
         {% endif %}
 
         {% if proximos %}
-          <!-- HERO CARD: PRÓXIMO TREN -->
+          <!-- HERO CARD: PRÓXIMO TREN (LIVE ACTIVITY LIQUID GLASS) -->
           {% set next_train = proximos[0] %}
           <div class="hero-card" id="heroCard" data-departure="{{ next_train.salida }}">
             <div class="hero-top">
