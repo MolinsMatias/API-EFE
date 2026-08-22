@@ -2,270 +2,752 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Itinerario EFE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <title>{{ origen }} ➝ {{ destino }}</title>
     <style>
       :root {
-        --bg-color: #f2f2f7;
-        --card-bg: #ffffff;
-        --text-main: #000000;
-        --text-sub: #8e8e93;
-        --accent: #007aff;
-        --price: #34c759;
-        --price-old: #c7c7cc;
-        --past-bg: #fff0f0;
-        --past-text: #cfafaf;
-        --past-accent: #e57373;
+        --bg-color: #F2F2F7;
+        --card-bg: #FFFFFF;
+        --card-border: rgba(0, 0, 0, 0.06);
+        --text-primary: #000000;
+        --text-secondary: #8E8E93;
+        --text-tertiary: #C7C7CC;
+        --accent: #007AFF;
+        --accent-bg: rgba(0, 122, 255, 0.1);
+        --success: #34C759;
+        --success-bg: rgba(52, 199, 89, 0.12);
+        --warning: #FF9500;
+        --warning-bg: rgba(255, 149, 0, 0.12);
+        --seg-bg: rgba(118, 118, 128, 0.12);
+        --seg-active: #FFFFFF;
+        --seg-active-text: #000000;
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+        --divider: rgba(60, 60, 67, 0.12);
       }
+
       @media (prefers-color-scheme: dark) {
         :root {
           --bg-color: #000000;
-          --card-bg: #1c1c1e;
-          --text-main: #ffffff;
-          --text-sub: #8e8e93;
-          --price-old: #48484a;
-          --past-bg: #2c1b1b;
-          --past-text: #6e5e5e;
-          --past-accent: #8e4444;
+          --card-bg: #1C1C1E;
+          --card-border: rgba(255, 255, 255, 0.08);
+          --text-primary: #FFFFFF;
+          --text-secondary: #8E8E93;
+          --text-tertiary: #48484A;
+          --accent: #0A84FF;
+          --accent-bg: rgba(10, 132, 255, 0.15);
+          --success: #30D158;
+          --success-bg: rgba(48, 209, 88, 0.15);
+          --warning: #FF9F0A;
+          --warning-bg: rgba(255, 159, 10, 0.15);
+          --seg-bg: rgba(118, 118, 128, 0.24);
+          --seg-active: #636366;
+          --seg-active-text: #FFFFFF;
+          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+          --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+          --divider: rgba(84, 84, 88, 0.36);
         }
       }
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-        background-color: var(--bg-color);
-        color: var(--text-main);
+
+      * {
+        box-sizing: border-box;
         margin: 0;
-        padding: 16px;
-        padding-bottom: 40px;
+        padding: 0;
+        -webkit-tap-highlight-color: transparent;
       }
-      .header {
-        text-align: center;
-        margin-bottom: 20px;
-        padding-top: 10px;
-      }
-      .route {
-        font-size: 18px;
-        font-weight: 700;
-      }
-      .tne-badge {
-        background: #007aff;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 10px;
-        vertical-align: middle;
-      }
-      
-      .card {
-        background-color: var(--card-bg);
-        border-radius: 14px;
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-primary);
         padding: 12px 16px;
-        margin-bottom: 10px;
+        padding-top: calc(env(safe-area-inset-top, 12px) + 8px);
+        padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 24px);
+        min-height: 100vh;
+        -webkit-font-smoothing: -webkit-antialiased;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .app-wrapper {
+        max-width: 440px;
+        margin: 0 auto;
+      }
+
+      /* HEADER & ROUTE CARD */
+      .header-card {
+        background: var(--card-bg);
+        border-radius: 18px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border: 0.5px solid var(--card-border);
+        box-shadow: var(--shadow-sm);
+      }
+
+      .meta-bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 12px;
       }
-      
-      /* ESTILOS ACORDEÓN */
+
+      .date-tag {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .update-time {
+        font-size: 12px;
+        color: var(--text-secondary);
+        font-weight: 400;
+      }
+
+      .route-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+      }
+
+      .station-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .station-col.dest {
+        align-items: flex-end;
+        text-align: right;
+      }
+
+      .station-hint {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+      }
+
+      .station-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.4px;
+        line-height: 1.2;
+      }
+
+      /* INVERT BUTTON (iOS HIG ICON BUTTON) */
+      .invert-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--seg-bg);
+        border: none;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
+        flex-shrink: 0;
+        outline: none;
+      }
+
+      .invert-btn:active {
+        transform: scale(0.9) rotate(180deg);
+        background: var(--accent-bg);
+      }
+
+      .invert-btn svg {
+        width: 17px;
+        height: 17px;
+        fill: currentColor;
+      }
+
+      /* iOS NATIVE SEGMENTED CONTROL */
+      .segmented-control {
+        display: flex;
+        background: var(--seg-bg);
+        padding: 2px;
+        border-radius: 9px;
+        gap: 2px;
+      }
+
+      .seg-item {
+        flex: 1;
+        padding: 6px 0;
+        font-size: 13px;
+        font-weight: 500;
+        text-align: center;
+        border-radius: 7px;
+        color: var(--text-secondary);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .seg-item.active {
+        background: var(--seg-active);
+        color: var(--seg-active-text);
+        font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      }
+
+      /* LIVE ACTIVITY HERO CARD (PRÓXIMO TREN) */
+      .hero-card {
+        background: var(--card-bg);
+        border-radius: 20px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
+        border: 0.5px solid var(--card-border);
+        box-shadow: var(--shadow-md);
+        position: relative;
+      }
+
+      .hero-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .hero-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .countdown-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--success-bg);
+        color: var(--success);
+        font-size: 12px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 12px;
+      }
+
+      .countdown-badge.urgent {
+        background: rgba(255, 59, 48, 0.12);
+        color: #FF3B30;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .hero-main {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 14px;
+      }
+
+      .hero-time-big {
+        font-size: 40px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        color: var(--text-primary);
+        line-height: 1;
+      }
+
+      .hero-arrival-wrap {
+        text-align: right;
+      }
+
+      .hero-arrival-sub {
+        font-size: 11px;
+        color: var(--text-secondary);
+        font-weight: 500;
+        text-transform: uppercase;
+      }
+
+      .hero-arrival-time {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      /* ROUTE PROGRESS LINE */
+      .transit-line {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .line-track {
+        flex: 1;
+        height: 2px;
+        background: var(--divider);
+        position: relative;
+      }
+
+      .transit-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: var(--accent-bg);
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 10px;
+      }
+
+      .hero-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 10px;
+        border-top: 0.5px solid var(--divider);
+      }
+
+      .badge-tarifa {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 5px;
+        text-transform: uppercase;
+      }
+
+      .badge-tarifa.Alta {
+        background: var(--warning-bg);
+        color: var(--warning);
+      }
+
+      .badge-tarifa.Baja {
+        background: var(--accent-bg);
+        color: var(--accent);
+      }
+
+      .hero-price {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--success);
+      }
+
+      /* LIST OF SUBSEQUENT TRAINS */
+      .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+        letter-spacing: -0.2px;
+        margin: 16px 4px 8px;
+      }
+
+      .train-card {
+        background: var(--card-bg);
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 0.5px solid var(--card-border);
+        box-shadow: var(--shadow-sm);
+        transition: transform 0.15s ease;
+      }
+
+      .train-card:active {
+        transform: scale(0.985);
+      }
+
+      .train-left {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .time-row {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+
+      .card-departure {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--text-primary);
+        letter-spacing: -0.5px;
+      }
+
+      .card-arrival {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .card-rel-time {
+        font-size: 12px;
+        color: var(--accent);
+        font-weight: 600;
+        margin-top: 1px;
+      }
+
+      .train-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 3px;
+      }
+
+      .card-price {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--success);
+      }
+
+      .card-meta {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .duration-label {
+        font-size: 11px;
+        color: var(--text-secondary);
+      }
+
+      /* ACCORDION PAST TRAINS */
       details {
-        margin-bottom: 20px;
+        margin-bottom: 14px;
       }
+
       summary {
         list-style: none;
         text-align: center;
-        padding: 10px;
-        background-color: rgba(128, 128, 128, 0.1);
-        border-radius: 8px;
-        color: var(--text-sub);
-        font-size: 14px;
+        padding: 9px;
+        background: var(--card-bg);
+        border-radius: 12px;
+        color: var(--text-secondary);
+        font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
+        border: 0.5px solid var(--card-border);
       }
+
       summary::-webkit-details-marker {
         display: none;
       }
+
       summary:after {
-        content: ' ▼';
-        font-size: 10px;
+        content: ' ▾';
+        font-size: 11px;
       }
+
       details[open] summary:after {
-        content: ' ▲';
+        content: ' ▴';
       }
-      
-      /* ESTILOS PASADOS */
-      .card.pasado {
-        background-color: var(--past-bg);
-        border: 1px solid rgba(0, 0, 0, 0.05);
-      }
-      .card.pasado .time-big {
-        text-decoration: line-through;
-        opacity: 0.6;
-        color: var(--past-accent);
-      }
-      .card.pasado .price-student {
-        color: var(--past-text);
-      }
-      .card.pasado .badge {
+
+      .train-card.pasado {
         opacity: 0.5;
-        filter: grayscale(100%);
+        background: var(--bg-color);
       }
-      
-      .left-info {
-        display: flex;
-        flex-direction: column;
-      }
-      .time-big {
-        font-size: 26px;
-        font-weight: 800;
-        letter-spacing: -0.5px;
-      }
-      .time-sub {
-        font-size: 13px;
-        color: var(--text-sub);
-      }
-      
-      .right-info {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-      }
-      
-      .price-container {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-      }
-      .price-original {
-        font-size: 11px;
+
+      .train-card.pasado .card-departure {
         text-decoration: line-through;
-        color: var(--price-old);
-        margin-bottom: -2px;
+        color: var(--text-secondary);
       }
-      .price-student {
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--price);
+
+      .train-card.pasado .card-price {
+        color: var(--text-secondary);
       }
-      
-      .duration-text {
-        font-size: 11px;
-        color: var(--text-sub);
-        margin-top: 2px;
-        margin-bottom: 2px;
-        font-weight: 500;
-      }
-      
-      .badge {
-        font-size: 10px;
-        padding: 3px 6px;
-        border-radius: 4px;
-        font-weight: 700;
-        text-transform: uppercase;
-        margin-top: 4px;
-      }
-      .badge.Alta {
-        background: #ffd60a;
-        color: black;
-      }
-      .badge.Baja {
-        background: #e5e5ea;
-        color: black;
-      }
-      @media (prefers-color-scheme: dark) {
-        .badge.Baja {
-          background: #3a3a3c;
-          color: white;
-        }
-      }
-      
-      .empty-msg {
+
+      /* EMPTY STATE */
+      .empty-box {
         text-align: center;
-        color: var(--text-sub);
-        margin-top: 40px;
+        padding: 36px 16px;
+        background: var(--card-bg);
+        border-radius: 18px;
+        margin: 16px 0;
+        border: 0.5px solid var(--card-border);
       }
-      
-      /* ESTILO DEL FOOTER (CRÉDITOS) */
-      .footer {
+
+      .empty-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-top: 6px;
+      }
+
+      .error-card {
+        background: rgba(255, 59, 48, 0.1);
+        border: 0.5px solid rgba(255, 59, 48, 0.3);
+        color: #FF3B30;
+        padding: 12px 16px;
+        border-radius: 14px;
         text-align: center;
-        margin-top: 40px;
+        font-weight: 600;
+        font-size: 14px;
+        margin: 16px 0;
+      }
+
+      .footer-credits {
+        text-align: center;
+        margin-top: 24px;
         font-size: 11px;
-        color: var(--text-sub);
-        opacity: 0.6;
-        font-weight: 500;
-        letter-spacing: 0.5px;
+        color: var(--text-secondary);
+        opacity: 0.7;
       }
     </style>
   </head>
   <body>
-    <div class="header">
-      <div style="font-size: 12px; color: var(--accent); font-weight: 700; text-transform: uppercase; margin-bottom: 4px;">🗓️ {{ fecha_titulo }}</div>
+    <div class="app-wrapper">
 
-      <div class="route">
-        {{ origen }} ➝ {{ destino }}
-        {% if tarifa == 'estudiante' %}<span class="tne-badge">TNE</span>{% endif %}
+      <!-- HEADER & CONTROLS -->
+      <div class="header-card">
+        <div class="meta-bar">
+          <span class="date-tag">{{ fecha_titulo }}</span>
+          <span class="update-time" id="liveClock">Actualizado {{ hora_actual }}</span>
+        </div>
+
+        <div class="route-container">
+          <div class="station-col origin">
+            <span class="station-hint">Origen</span>
+            <span class="station-title">{{ origen }}</span>
+          </div>
+
+          <!-- BOTÓN INVERTIR RUTA (iOS HIG ICON) -->
+          <button class="invert-btn" id="btnInvert" title="Invertir ruta" aria-label="Invertir ruta">
+            <svg viewBox="0 0 24 24">
+              <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
+            </svg>
+          </button>
+
+          <div class="station-col dest">
+            <span class="station-hint">Destino</span>
+            <span class="station-title">{{ destino }}</span>
+          </div>
+        </div>
+
+        <!-- SEGMENTED CONTROL -->
+        <div class="segmented-control">
+          <button class="seg-item {% if usuario == 2 %}active{% endif %}" onclick="setUsuario(2)">
+            Estudiante
+          </button>
+          <button class="seg-item {% if usuario == 1 %}active{% endif %}" onclick="setUsuario(1)">
+            General
+          </button>
+          <button class="seg-item {% if usuario == 3 %}active{% endif %}" onclick="setUsuario(3)">
+            Adulto Mayor
+          </button>
+        </div>
       </div>
 
-      <div style="font-size: 13px; color: gray; margin-top: 5px;">Actualizado: {{ hora_actual }}</div>
-    </div>
+      {% if error %}
+        <div class="error-card">⚠️ {{ error }}</div>
+      {% else %}
 
-    {% if error %}
-      <div style="text-align:center; color: red;">{{ error }}</div>
-    {% else %}
-      {% if pasados %}
-        <details>
-          <summary>Ver {{ pasados|length }} viajes anteriores</summary>
-          {% for tren in pasados %}
-            <div class="card pasado">
-              <div class="left-info">
-                <span class="time-big">{{ tren.salida }}</span>
-                <span class="time-sub">Llegada {{ tren.llegada }}</span>
-              </div>
-              <div class="right-info">
-                <div class="price-container">
-                  {% if tarifa == 'estudiante' %}
-                    <span class="price-original">${{ tren.valor }}</span>
-                    <span class="price-student">${{ tren.valor_estudiante }}</span>
-                  {% else %}
-                    <span class="price-student">${{ tren.valor }}</span>
-                  {% endif %}
+        <!-- TRENES PASADOS -->
+        {% if pasados %}
+          <details>
+            <summary>Ver {{ pasados|length }} salidas anteriores</summary>
+            {% for tren in pasados %}
+              <div class="train-card pasado">
+                <div class="train-left">
+                  <div class="time-row">
+                    <span class="card-departure">{{ tren.salida }}</span>
+                    <span class="card-arrival">Llegada {{ tren.llegada }}</span>
+                  </div>
                 </div>
-                <span class="duration-text">⏱ {{ tren.duracion }}</span>
-                <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
+                <div class="train-right">
+                  <span class="card-price">${{ tren.valor }}</span>
+                  <div class="card-meta">
+                    <span class="duration-label">{{ tren.duracion }}</span>
+                    <span class="badge-tarifa {{ tren.tarifa }}">{{ tren.tarifa }}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          {% endfor %}
-        </details>
-      {% endif %}
+            {% endfor %}
+          </details>
+        {% endif %}
 
-      {% if proximos %}
-        {% for tren in proximos %}
-          <div class="card">
-            <div class="left-info">
-              <span class="time-big">{{ tren.salida }}</span>
-              <span class="time-sub">Llegada {{ tren.llegada }}</span>
-            </div>
-            <div class="right-info">
-              <div class="price-container">
-                {% if tarifa == 'estudiante' %}
-                  <span class="price-original">${{ tren.valor }}</span>
-                  <span class="price-student">${{ tren.valor_estudiante }}</span>
-                {% else %}
-                  <span class="price-student">${{ tren.valor }}</span>
-                {% endif %}
+        {% if proximos %}
+          <!-- HERO CARD: PRÓXIMO TREN (LIVE ACTIVITY STYLE) -->
+          {% set next_train = proximos[0] %}
+          <div class="hero-card" id="heroCard" data-departure="{{ next_train.salida }}">
+            <div class="hero-top">
+              <div class="hero-label">
+                <span>🚆</span> Próximo tren
               </div>
-              <span class="duration-text">⏱ {{ tren.duracion }}</span>
-              <span class="badge {{ tren.tarifa }}">{{ tren.tarifa }}</span>
+              <div class="countdown-badge" id="heroCountdown">
+                <span class="status-dot"></span>
+                <span id="heroCountdownText">Calculando...</span>
+              </div>
+            </div>
+
+            <div class="hero-main">
+              <div class="hero-time-big">{{ next_train.salida }}</div>
+              <div class="hero-arrival-wrap">
+                <div class="hero-arrival-sub">Llegada estimada</div>
+                <div class="hero-arrival-time">{{ next_train.llegada }}</div>
+              </div>
+            </div>
+
+            <div class="transit-line">
+              <div class="line-track"></div>
+              <div class="transit-pill">
+                <span>⏱</span> {{ next_train.duracion }}
+              </div>
+              <div class="line-track"></div>
+            </div>
+
+            <div class="hero-footer">
+              <span class="badge-tarifa {{ next_train.tarifa }}">Tarifa {{ next_train.tarifa }}</span>
+              <span class="hero-price">${{ next_train.valor }}</span>
             </div>
           </div>
-        {% endfor %}
-      {% else %}
-        <div class="empty-msg">
-          <p style="font-size: 40px; margin-bottom: 10px;">😴</p>No hay más trenes por hoy
-        </div>
-      {% endif %}
-    {% endif %}
 
-    <div class="footer">Desarrollado por Matias Molins</div>
+          <!-- SIGUIENTES SALIDAS -->
+          {% if proximos|length > 1 %}
+            <div class="section-title">Siguientes Salidas</div>
+            {% for tren in proximos[1:] %}
+              <div class="train-card" data-departure="{{ tren.salida }}">
+                <div class="train-left">
+                  <div class="time-row">
+                    <span class="card-departure">{{ tren.salida }}</span>
+                    <span class="card-arrival">Llegada {{ tren.llegada }}</span>
+                  </div>
+                  <div class="card-rel-time item-countdown" data-departure="{{ tren.salida }}"></div>
+                </div>
+                <div class="train-right">
+                  <span class="card-price">${{ tren.valor }}</span>
+                  <div class="card-meta">
+                    <span class="duration-label">{{ tren.duracion }}</span>
+                    <span class="badge-tarifa {{ tren.tarifa }}">{{ tren.tarifa }}</span>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+        {% else %}
+          <div class="empty-box">
+            <div style="font-size: 36px;">😴</div>
+            <div class="empty-title">No hay más salidas programadas para hoy</div>
+          </div>
+        {% endif %}
+
+      {% endif %}
+
+      <div class="footer-credits">Desarrollado por Matías Molins</div>
+
+    </div>
+
+    <!-- CLIENT SCRIPT -->
+    <script>
+      const ORIGEN_ID = "{{ origen_id }}";
+      const DESTINO_ID = "{{ destino_id }}";
+      const ES_HOY = {% if es_hoy %}true{% else %}false{% endif %};
+
+      // 1. Invertir Ruta
+      document.getElementById('btnInvert')?.addEventListener('click', function() {
+        this.style.transform = 'scale(0.88) rotate(180deg)';
+        const params = new URLSearchParams(window.location.search);
+        params.set('origen', DESTINO_ID);
+        params.set('destino', ORIGEN_ID);
+        setTimeout(() => {
+          window.location.search = params.toString();
+        }, 150);
+      });
+
+      // 2. Cambiar Tipo de Usuario
+      function setUsuario(userId) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('usuario', userId);
+        window.location.search = params.toString();
+      }
+
+      // 3. Contador en Tiempo Real
+      function updateCountdowns() {
+        const now = new Date();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+        const clockEl = document.getElementById('liveClock');
+        if (clockEl) {
+          const hh = String(now.getHours()).padStart(2, '0');
+          const mm = String(now.getMinutes()).padStart(2, '0');
+          clockEl.textContent = `Actualizado ${hh}:${mm}`;
+        }
+
+        if (!ES_HOY) {
+          const heroCountdown = document.getElementById('heroCountdown');
+          if (heroCountdown) heroCountdown.style.display = 'none';
+          return;
+        }
+
+        const heroCard = document.getElementById('heroCard');
+        if (heroCard) {
+          const depStr = heroCard.getAttribute('data-departure');
+          if (depStr) {
+            const [h, m] = depStr.split(':').map(Number);
+            const depMinutes = h * 60 + m;
+            const diff = depMinutes - currentMinutes;
+
+            const textEl = document.getElementById('heroCountdownText');
+            const badgeEl = document.getElementById('heroCountdown');
+
+            if (textEl && badgeEl) {
+              if (diff > 60) {
+                const hrs = Math.floor(diff / 60);
+                const mins = diff % 60;
+                textEl.textContent = `Sale en ${hrs}h ${mins}m`;
+                badgeEl.classList.remove('urgent');
+              } else if (diff > 5) {
+                textEl.textContent = `Sale en ${diff} min`;
+                badgeEl.classList.remove('urgent');
+              } else if (diff > 0) {
+                textEl.textContent = `Sale en ${diff} min`;
+                badgeEl.classList.add('urgent');
+              } else if (diff === 0) {
+                textEl.textContent = `Saliendo ahora`;
+                badgeEl.classList.add('urgent');
+              } else {
+                textEl.textContent = `Partió hace ${Math.abs(diff)} min`;
+                badgeEl.classList.add('urgent');
+              }
+            }
+          }
+        }
+
+        document.querySelectorAll('.item-countdown').forEach(el => {
+          const depStr = el.getAttribute('data-departure');
+          if (depStr) {
+            const [h, m] = depStr.split(':').map(Number);
+            const depMinutes = h * 60 + m;
+            const diff = depMinutes - currentMinutes;
+            if (diff > 60) {
+              const hrs = Math.floor(diff / 60);
+              const mins = diff % 60;
+              el.textContent = `En ${hrs}h ${mins}m`;
+            } else if (diff > 0) {
+              el.textContent = `En ${diff} min`;
+            } else {
+              el.textContent = '';
+            }
+          }
+        });
+      }
+
+      updateCountdowns();
+      setInterval(updateCountdowns, 15000);
+    </script>
   </body>
 </html>

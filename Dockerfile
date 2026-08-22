@@ -1,21 +1,19 @@
-# 1. Usamos Python ligero como base
-FROM python:3.9-slim
+# 1. Base ligera de Python
+FROM python:3.10-slim
 
-# 2. Configuraciones básicas para que Python corra bien en la nube
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+# 2. Configuraciones de entorno para la nube
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-# 3. Creamos una carpeta vacía llamada 'app' dentro del servidor
+# 3. Directorio de trabajo en el contenedor
 WORKDIR /app
 
-# 4. Copiamos TU archivo requirements.txt al servidor e instalamos las librerías
+# 4. Instalación de dependencias
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. EL PASO IMPORTANTE:
-# Este punto significa "Copia TODO lo que hay en mi carpeta actual al servidor"
-# Esto copiará automáticamente tu carpeta 'templates', tu 'main.py' y todo lo demás.
+# 5. Copiar el código fuente y plantillas
 COPY . .
 
-# 6. Comando para encender la app usando la variable de puerto de Google
-CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}
+# 6. Comando de ejecución con soporte dinámico para el puerto de Cloud Run ($PORT)
+CMD ["sh", "-c", "exec uvicorn main:app --host 0.0.0.0 --port ${PORT:-8080}"]
