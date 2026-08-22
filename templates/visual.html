@@ -12,7 +12,10 @@
       :root {
         --bg-color: #F2F2F7;
         --card-bg: #FFFFFF;
-        --card-border: rgba(0, 0, 0, 0.06);
+        --card-border: rgba(0, 0, 0, 0.08);
+        --past-card-bg: #FFF1F0;
+        --past-border: rgba(255, 59, 48, 0.22);
+        --past-text: #ffffff;
         --text-primary: #000000;
         --text-secondary: #8E8E93;
         --text-tertiary: #C7C7CC;
@@ -22,11 +25,8 @@
         --success-bg: rgba(52, 199, 89, 0.12);
         --warning: #FF9500;
         --warning-bg: rgba(255, 149, 0, 0.12);
-        --seg-bg: rgba(118, 118, 128, 0.12);
-        --seg-active: #FFFFFF;
-        --seg-active-text: #000000;
-        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
         --divider: rgba(60, 60, 67, 0.12);
       }
 
@@ -34,7 +34,10 @@
         :root {
           --bg-color: #000000;
           --card-bg: #1C1C1E;
-          --card-border: rgba(255, 255, 255, 0.08);
+          --card-border: rgba(255, 255, 255, 0.1);
+          --past-card-bg: rgba(255, 69, 58, 0.05);
+          --past-border: rgba(138, 44, 39, 0.28);
+          --past-text: #8a6462;
           --text-primary: #FFFFFF;
           --text-secondary: #8E8E93;
           --text-tertiary: #48484A;
@@ -44,11 +47,8 @@
           --success-bg: rgba(48, 209, 88, 0.15);
           --warning: #FF9F0A;
           --warning-bg: rgba(255, 159, 10, 0.15);
-          --seg-bg: rgba(118, 118, 128, 0.24);
-          --seg-active: #636366;
-          --seg-active-text: #FFFFFF;
-          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-          --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.3);
+          --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+          --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.4);
           --divider: rgba(84, 84, 88, 0.36);
         }
       }
@@ -81,8 +81,8 @@
       .header-card {
         background: var(--card-bg);
         border-radius: 18px;
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 16px 18px;
+        margin-bottom: 14px;
         border: 0.5px solid var(--card-border);
         box-shadow: var(--shadow-sm);
       }
@@ -112,8 +112,8 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
-        margin-bottom: 14px;
+        gap: 12px;
+        margin-bottom: 12px;
       }
 
       .station-col {
@@ -136,75 +136,55 @@
       }
 
       .station-title {
-        font-size: 17px;
+        font-size: 18px;
         font-weight: 700;
         color: var(--text-primary);
         letter-spacing: -0.4px;
         line-height: 1.2;
       }
 
-      /* INVERT BUTTON (PURE HTML <a> TAG COMPATIBLE WITH IOS SHORTCUTS) */
-      .invert-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--seg-bg);
-        border: none;
-        color: var(--accent);
+      .route-arrow {
+        color: var(--text-secondary);
+        font-size: 16px;
+        font-weight: 600;
+        opacity: 0.6;
+      }
+
+      /* USER TARIFF BADGE */
+      .user-badge-bar {
         display: flex;
         align-items: center;
         justify-content: center;
-        cursor: pointer;
-        transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.2s;
-        flex-shrink: 0;
-        outline: none;
-        text-decoration: none;
+        padding-top: 10px;
+        border-top: 0.5px solid var(--divider);
       }
 
-      .invert-btn:active {
-        transform: scale(0.9) rotate(180deg);
-        background: var(--accent-bg);
-      }
-
-      .invert-btn svg {
-        width: 17px;
-        height: 17px;
-        fill: currentColor;
-      }
-
-      /* iOS NATIVE SEGMENTED CONTROL (PURE HTML <a> TAGS) */
-      .segmented-control {
-        display: flex;
-        background: var(--seg-bg);
-        padding: 2px;
-        border-radius: 9px;
-        gap: 2px;
-      }
-
-      .seg-item {
-        flex: 1;
-        padding: 6px 0;
-        font-size: 13px;
-        font-weight: 500;
-        text-align: center;
-        border-radius: 7px;
-        color: var(--text-secondary);
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        display: block;
-      }
-
-      .seg-item.active {
-        background: var(--seg-active);
-        color: var(--seg-active-text);
+      .badge-user {
+        font-size: 12px;
         font-weight: 600;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        padding: 4px 12px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
       }
 
-      /* LIVE ACTIVITY HERO CARD (PRÓXIMO TREN) */
+      .badge-user.estudiante {
+        background: var(--accent-bg);
+        color: var(--accent);
+      }
+
+      .badge-user.general {
+        background: rgba(142, 142, 147, 0.12);
+        color: var(--text-secondary);
+      }
+
+      .badge-user.adulto_mayor {
+        background: var(--warning-bg);
+        color: var(--warning);
+      }
+
+      /* HERO CARD (PRÓXIMO TREN) */
       .hero-card {
         background: var(--card-bg);
         border-radius: 20px;
@@ -212,7 +192,6 @@
         margin-bottom: 14px;
         border: 0.5px solid var(--card-border);
         box-shadow: var(--shadow-md);
-        position: relative;
       }
 
       .hero-top {
@@ -287,7 +266,7 @@
         color: var(--text-primary);
       }
 
-      /* ROUTE PROGRESS LINE */
+      /* TRANSIT LINE */
       .transit-line {
         display: flex;
         align-items: center;
@@ -299,7 +278,6 @@
         flex: 1;
         height: 2px;
         background: var(--divider);
-        position: relative;
       }
 
       .transit-pill {
@@ -346,7 +324,7 @@
         color: var(--success);
       }
 
-      /* LIST OF SUBSEQUENT TRAINS */
+      /* LIST OF TRAINS */
       .section-title {
         font-size: 13px;
         font-weight: 600;
@@ -366,11 +344,6 @@
         align-items: center;
         border: 0.5px solid var(--card-border);
         box-shadow: var(--shadow-sm);
-        transition: transform 0.15s ease;
-      }
-
-      .train-card:active {
-        transform: scale(0.985);
       }
 
       .train-left {
@@ -427,7 +400,7 @@
         color: var(--text-secondary);
       }
 
-      /* ACCORDION PAST TRAINS */
+      /* ACCORDION PAST TRAINS (CLEAR CONTRAST IN DARK/LIGHT MODE) */
       details {
         margin-bottom: 14px;
       }
@@ -435,15 +408,16 @@
       summary {
         list-style: none;
         text-align: center;
-        padding: 9px;
+        padding: 10px;
         background: var(--card-bg);
         border-radius: 12px;
         color: var(--text-secondary);
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
         border: 0.5px solid var(--card-border);
+        box-shadow: var(--shadow-sm);
       }
 
       summary::-webkit-details-marker {
@@ -460,20 +434,28 @@
       }
 
       .train-card.pasado {
-        opacity: 0.5;
-        background: var(--bg-color);
+        background: var(--past-card-bg);
+        border: 0.5px solid var(--past-border);
+        box-shadow: var(--shadow-sm);
+        opacity: 0.85;
       }
 
       .train-card.pasado .card-departure {
         text-decoration: line-through;
-        color: var(--text-secondary);
+        color: var(--past-text);
+        opacity: 0.75;
       }
 
       .train-card.pasado .card-price {
         color: var(--text-secondary);
       }
 
-      /* EMPTY STATE */
+      .train-card.pasado .badge-tarifa {
+        opacity: 0.6;
+        filter: grayscale(100%);
+      }
+
+      /* EMPTY & ERROR STATES */
       .empty-box {
         text-align: center;
         padding: 36px 16px;
@@ -514,7 +496,7 @@
   <body>
     <div class="app-wrapper">
 
-      <!-- HEADER & CONTROLS -->
+      <!-- HEADER & TARIFF BADGE -->
       <div class="header-card">
         <div class="meta-bar">
           <span class="date-tag">{{ fecha_titulo }}</span>
@@ -527,12 +509,7 @@
             <span class="station-title">{{ origen }}</span>
           </div>
 
-          <!-- BOTÓN INVERTIR RUTA (HIPERVÍNCULO NATIVO A PRUEBA DE BLOQUEOS EN IOS) -->
-          <a href="/itinerarios/visual?origen={{ destino_id }}&destino={{ origen_id }}&usuario={{ usuario }}{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="invert-btn" id="btnInvert" title="Invertir ruta" aria-label="Invertir ruta">
-            <svg viewBox="0 0 24 24">
-              <path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/>
-            </svg>
-          </a>
+          <div class="route-arrow">➝</div>
 
           <div class="station-col dest">
             <span class="station-hint">Destino</span>
@@ -540,17 +517,14 @@
           </div>
         </div>
 
-        <!-- SEGMENTED CONTROL (ENLACES NATIVOS SIN JAVASCRIPT) -->
-        <div class="segmented-control">
-          <a href="/itinerarios/visual?origen={{ origen_id }}&destino={{ destino_id }}&usuario=2{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="seg-item {% if usuario == 2 %}active{% endif %}">
-            Estudiante
-          </a>
-          <a href="/itinerarios/visual?origen={{ origen_id }}&destino={{ destino_id }}&usuario=1{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="seg-item {% if usuario == 1 %}active{% endif %}">
-            General
-          </a>
-          <a href="/itinerarios/visual?origen={{ origen_id }}&destino={{ destino_id }}&usuario=3{% if fecha_raw %}&fecha={{ fecha_raw }}{% endif %}" class="seg-item {% if usuario == 3 %}active{% endif %}">
-            Adulto Mayor
-          </a>
+        <div class="user-badge-bar">
+          {% if usuario == 2 %}
+            <span class="badge-user estudiante">🎓 Tarifa Estudiante</span>
+          {% elif usuario == 3 %}
+            <span class="badge-user adulto_mayor">👵 Tarifa Adulto Mayor</span>
+          {% else %}
+            <span class="badge-user general">👤 Tarifa General</span>
+          {% endif %}
         </div>
       </div>
 
@@ -583,7 +557,7 @@
         {% endif %}
 
         {% if proximos %}
-          <!-- HERO CARD: PRÓXIMO TREN (CALCULADO EN SERVIDOR + MEJORA EN JS) -->
+          <!-- HERO CARD: PRÓXIMO TREN -->
           {% set next_train = proximos[0] %}
           <div class="hero-card" id="heroCard" data-departure="{{ next_train.salida }}">
             <div class="hero-top">
@@ -656,9 +630,9 @@
 
     </div>
 
-    <!-- CLIENT SCRIPT (PROGRESSIVE ENHANCEMENT - SOLO SI JS ESTÁ HABILITADO) -->
+    <!-- SCRIPT LIMPIO PARA ACTUALIZACIÓN DINÁMICA -->
     <script>
-      const ES_HOY = {% if es_hoy %}true{% else %}false{% endif %};
+      const ES_HOY = "{{ 'true' if es_hoy else 'false' }}" === "true";
 
       function updateCountdowns() {
         if (!ES_HOY) return;
