@@ -74,21 +74,50 @@ def normalizar_texto(texto: str) -> str:
     )
 
 
+ALIAS_ESTACIONES = {
+    1: ["estacion central", "central", "santiago", "alameda", "santiago centro", "al centro", "a santiago"],
+    3: ["san bernardo", "sanber", "san bernardo centro", "a san bernardo"],
+    6: ["buin zoo", "zoo", "el zoo", "zoologico", "al zoo"],
+    7: ["buin", "buin centro", "a buin"],
+    8: ["linderos", "a linderos"],
+    9: ["paine", "paine centro", "a paine"],
+    10: ["hospital", "al hospital"],
+    11: ["san francisco", "mostazal", "san francisco de mostazal", "a mostazal"],
+    12: ["graneros", "a graneros"],
+    13: ["rancagua", "rgua", "a rancagua"]
+}
+
+
 def resolver_id_estacion(valor: Union[int, str]) -> Optional[int]:
-    """Resuelve un ID de estación a partir de un entero o del nombre textual."""
+    """Resuelve un ID de estación a partir de un entero, nombre oficial o alias por voz de Siri."""
     if isinstance(valor, int) or (isinstance(valor, str) and valor.isdigit()):
         v_int = int(valor)
         if v_int in DESTINOS:
             return v_int
 
-    busqueda = normalizar_texto(str(valor))
+    busqueda = normalizar_texto(str(valor)).replace("hacia", "").replace("para", "").strip()
+    if not busqueda:
+        return None
+
+    # 1. Búsqueda exacta en nombres oficiales
     for id_est, nombre in DESTINOS.items():
         if busqueda == normalizar_texto(nombre):
             return id_est
 
-    # Búsqueda por coincidencia parcial
+    # 2. Búsqueda en alias y lenguaje coloquial de Siri
+    for id_est, aliases in ALIAS_ESTACIONES.items():
+        for alias in aliases:
+            if busqueda == normalizar_texto(alias):
+                return id_est
+
+    # 3. Búsqueda por subcadena / coincidencia parcial
+    for id_est, aliases in ALIAS_ESTACIONES.items():
+        for alias in aliases:
+            if normalizar_texto(alias) in busqueda or busqueda in normalizar_texto(alias):
+                return id_est
+
     for id_est, nombre in DESTINOS.items():
-        if busqueda in normalizar_texto(nombre):
+        if busqueda in normalizar_texto(nombre) or normalizar_texto(nombre) in busqueda:
             return id_est
 
     return None
