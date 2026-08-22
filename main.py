@@ -7,6 +7,7 @@ from typing import Optional, Union, Dict, Any, Tuple
 import unicodedata
 from datetime import datetime
 import time
+import math
 
 try:
     from zoneinfo import ZoneInfo
@@ -15,8 +16,8 @@ except ImportError:
 
 app = FastAPI(
     title="API EFE Trenes de Chile",
-    description="API para consultar itinerarios de trenes EFE (Servicio Nos/Rancagua). Incluye endpoints JSON y vista web visual optimizada para Atajos de iOS.",
-    version="2.1.0"
+    description="API para consultar itinerarios de trenes EFE (Servicio Nos/Rancagua). Incluye endpoints JSON, cálculo por GPS y vista web visual optimizada para Atajos de iOS.",
+    version="2.2.0"
 )
 
 # Configuración de zona horaria oficial de Chile
@@ -37,6 +38,20 @@ DESTINOS = {
     11: "San Francisco",
     12: "Graneros",
     13: "Rancagua"
+}
+
+# Coordenadas GPS oficiales de cada estación para geolocalización inteligente
+ESTACIONES_COORDENADAS = {
+    1: {"nombre": "Estación Central", "lat": -33.4517, "lon": -70.6791},
+    3: {"nombre": "San Bernardo", "lat": -33.5936, "lon": -70.7028},
+    6: {"nombre": "Buin Zoo", "lat": -33.7132, "lon": -70.7335},
+    7: {"nombre": "Buin", "lat": -33.7314, "lon": -70.7381},
+    8: {"nombre": "Linderos", "lat": -33.7667, "lon": -70.7369},
+    9: {"nombre": "Paine", "lat": -33.8115, "lon": -70.7412},
+    10: {"nombre": "Hospital", "lat": -33.8732, "lon": -70.7588},
+    11: {"nombre": "San Francisco", "lat": -33.9877, "lon": -70.7058},
+    12: {"nombre": "Graneros", "lat": -34.0628, "lon": -70.7242},
+    13: {"nombre": "Rancagua", "lat": -34.1678, "lon": -70.7331}
 }
 
 # Diccionario oficial de tipos de usuario soportados por el planificador de EFE
@@ -99,6 +114,58 @@ def resolver_tipo_usuario(valor: Union[int, str, None]) -> int:
         return 3
 
     return 1
+
+
+def encontrar_estacion_mas_cercana(lat: float, lon: float) -> Tuple[int, str, float]:
+    """Calcula la distancia haversine y devuelve (id_estacion, nombre_estacion, distancia_km)."""
+    R = 6371.0 # Radio de la Tierra en km
+    mejor_id = 1
+    mejor_dist = float('inf')
+    
+    lat_rad = math.radians(lat)
+    lon_rad = math.radians(lon)
+    
+    for est_id, info in ESTACIONES_COORDENADAS.items():
+        dlat = math.radians(info["lat"]) - lat_rad
+        dlon = math.radians(info["lon"]) - lon_rad
+        a = math.sin(dlat / 2)**2 + math.cos(lat_rad) * math.cos(math.radians(info["lat"])) * math.sin(dlon / 2)**2
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        distancia = R * c
+        if distancia < mejor_dist:
+            mejor_dist = distancia
+            mejor_id = est_id
+            
+    return mejor_id, ESTACIONES_COORDENADAS[mejor_id]["nombre"], round(mejor_dist, 2)
+
+
+def resolver_origen_destino_geolocalizados(
+    origen: Optional[str],
+    destino: Optional[str],
+    lat: Optional[float],
+    lon: Optional[float]
+) -> Tuple[Optional[str], Optional[str], Optional[Dict[str, Any]]]:
+    """
+    Si se pasa lat y lon pero no origen, calcula la estación más cercana automáticamente.
+    Si tampoco se pasa destino, determina la dirección lógica:
+      - Si estás en Estación Central (1), destino por defecto es Rancagua (13).
+      - Si estás en cualquier otra estación del sur, destino por defecto es Estación Central (1).
+    """
+    geo_info = None
+    if lat is not None and lon is not None:
+        cercana_id, cercana_nom, dist_km = encontrar_estacion_mas_cercana(lat, lon)
+        geo_info = {
+            "estacion_detectada": cercana_nom,
+            "distancia_km": dist_km,
+            "lat": lat,
+            "lon": lon
+        }
+        if not origen:
+            origen = str(cercana_id)
+        if not destino:
+            # Infiere dirección natural
+            destino = "13" if cercana_id == 1 else "1"
+            
+    return origen, destino, geo_info
 
 
 # --- SCRAPER EFE ---
@@ -216,25 +283,43 @@ def obtener_todos_los_viajes_con_cache(
 @app.get(
     "/estaciones",
     summary="Lista de estaciones disponibles",
-    description="Devuelve todas las estaciones soportadas con su ID interno y nombre oficial."
+    description="Devuelve todas las estaciones soportadas con su ID interno, nombre oficial y coordenadas GPS."
 )
 def listar_estaciones():
     return {
-        "estaciones": [{"id": id_est, "nombre": nombre} for id_est, nombre in DESTINOS.items()]
+        "estaciones": [
+            {
+                "id": id_est,
+                "nombre": info["nombre"],
+                "lat": info["lat"],
+                "lon": info["lon"]
+            }
+            for id_est, info in ESTACIONES_COORDENADAS.items()
+        ]
     }
 
 
 @app.get(
     "/itinerarios",
     summary="Itinerarios en JSON",
-    description="Devuelve la lista completa de viajes programados entre dos estaciones en formato JSON (con caché en memoria de 1 minuto)."
+    description="Devuelve la lista completa de viajes programados entre dos estaciones en formato JSON (con soporte de coordenadas GPS y caché de 1 minuto)."
 )
 def itinerarios_json(
-    origen: str = Query(..., description="Nombre o ID de la estación de origen (ej: 1 o 'Estación Central')"),
-    destino: str = Query(..., description="Nombre o ID de la estación de destino (ej: 13 o 'Rancagua')"),
+    origen: Optional[str] = Query(None, description="Nombre o ID de la estación de origen"),
+    destino: Optional[str] = Query(None, description="Nombre o ID de la estación de destino"),
+    lat: Optional[float] = Query(None, description="Latitud GPS actual para detectar estación más cercana"),
+    lon: Optional[float] = Query(None, description="Longitud GPS actual para detectar estación más cercana"),
     fecha: Optional[str] = Query(None, description="Fecha en formato YYYY-MM-DD (default: hoy en Chile)"),
     usuario: Optional[str] = Query("1", description="Tipo de usuario: 1 = General, 2 = Estudiante, 3 = Adulto Mayor")
 ):
+    origen, destino, geo_info = resolver_origen_destino_geolocalizados(origen, destino, lat, lon)
+
+    if not origen or not destino:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Debes proporcionar 'origen' y 'destino', o enviar 'lat' y 'lon' para autodetección."}
+        )
+
     resultado = obtener_todos_los_viajes_con_cache(origen, destino, fecha, usuario)
     todos, error, id_org, id_dst, fecha_usada, id_usr = resultado
 
@@ -256,6 +341,7 @@ def itinerarios_json(
     return {
         "origen": {"id": id_org, "nombre": DESTINOS.get(id_org, origen)},
         "destino": {"id": id_dst, "nombre": DESTINOS.get(id_dst, destino)},
+        "geolocalizacion": geo_info,
         "fecha": fecha_usada,
         "usuario": {"id": id_usr, "tipo": USUARIOS.get(id_usr, "General")},
         "viajes": viajes
@@ -265,14 +351,24 @@ def itinerarios_json(
 @app.get(
     "/proximo",
     summary="Próximo tren disponible (Optimizado para Siri, Apple Watch y Widgets)",
-    description="Devuelve el próximo tren a partir de la hora actual con minutos restantes y una frase preformateada lista para que Siri la lea por voz."
+    description="Devuelve el próximo tren a partir de la hora actual con minutos restantes y una frase preformateada lista para que Siri la lea por voz. Soporta coordenadas GPS (lat/lon) para calcular automáticamente la estación más cercana."
 )
 def proximo_tren_endpoint(
-    origen: str = Query(..., description="Nombre o ID de la estación de origen (ej: 1 o 'Estación Central')"),
-    destino: str = Query(..., description="Nombre o ID de la estación de destino (ej: 13 o 'Rancagua')"),
+    origen: Optional[str] = Query(None, description="Nombre o ID de la estación de origen (opcional si envías lat/lon)"),
+    destino: Optional[str] = Query(None, description="Nombre o ID de la estación de destino (opcional si envías lat/lon)"),
+    lat: Optional[float] = Query(None, description="Latitud GPS actual del usuario para autodetectar la estación más cercana"),
+    lon: Optional[float] = Query(None, description="Longitud GPS actual del usuario para autodetectar la estación más cercana"),
     fecha: Optional[str] = Query(None, description="Fecha en formato YYYY-MM-DD (default: hoy en Chile)"),
     usuario: Optional[str] = Query("1", description="Tipo de usuario: 1 = General, 2 = Estudiante, 3 = Adulto Mayor")
 ):
+    origen, destino, geo_info = resolver_origen_destino_geolocalizados(origen, destino, lat, lon)
+
+    if not origen or not destino:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Debes proporcionar 'origen' y 'destino', o enviar 'lat' y 'lon' para autodetección por GPS."}
+        )
+
     resultado = obtener_todos_los_viajes_con_cache(origen, destino, fecha, usuario)
     todos, error, id_org, id_dst, fecha_usada, id_usr = resultado
 
@@ -323,6 +419,7 @@ def proximo_tren_endpoint(
         return {
             "origen": {"id": id_org, "nombre": nombre_org},
             "destino": {"id": id_dst, "nombre": nombre_dst},
+            "geolocalizacion": geo_info,
             "fecha": fecha_usada,
             "usuario": {"id": id_usr, "tipo": tipo_usr},
             "hay_salidas": False,
@@ -339,21 +436,22 @@ def proximo_tren_endpoint(
     if es_hoy:
         mins = siguiente["minutos_restantes"]
         if mins == 0:
-            texto_siri = f"El próximo tren hacia {nombre_dst} está saliendo ahora, a las {siguiente['salida']}."
+            texto_siri = f"El próximo tren desde {nombre_org} hacia {nombre_dst} está saliendo ahora, a las {siguiente['salida']}."
         elif mins == 1:
-            texto_siri = f"El próximo tren hacia {nombre_dst} sale en 1 minuto, a las {siguiente['salida']}."
+            texto_siri = f"El próximo tren desde {nombre_org} hacia {nombre_dst} sale en 1 minuto, a las {siguiente['salida']}."
         elif mins < 60:
-            texto_siri = f"El próximo tren hacia {nombre_dst} sale en {mins} minutos, a las {siguiente['salida']}."
+            texto_siri = f"El próximo tren desde {nombre_org} hacia {nombre_dst} sale en {mins} minutos, a las {siguiente['salida']}."
         else:
             hrs = mins // 60
             rest = mins % 60
-            texto_siri = f"El próximo tren hacia {nombre_dst} sale en {hrs} horas y {rest} minutos, a las {siguiente['salida']}."
+            texto_siri = f"El próximo tren desde {nombre_org} hacia {nombre_dst} sale en {hrs} horas y {rest} minutos, a las {siguiente['salida']}."
     else:
-        texto_siri = f"La primera salida programada hacia {nombre_dst} es a las {siguiente['salida']}."
+        texto_siri = f"La primera salida programada desde {nombre_org} hacia {nombre_dst} es a las {siguiente['salida']}."
 
     return {
         "origen": {"id": id_org, "nombre": nombre_org},
         "destino": {"id": id_dst, "nombre": nombre_dst},
+        "geolocalizacion": geo_info,
         "fecha": fecha_usada,
         "usuario": {"id": id_usr, "tipo": tipo_usr},
         "hay_salidas": True,
@@ -384,15 +482,30 @@ def proximo_tren_endpoint(
     "/itinerarios/visual",
     response_class=HTMLResponse,
     summary="Itinerarios visual (HTML)",
-    description="Devuelve una página HTML estilo Apple iOS 26 Liquid Glass con contadores en vivo, optimizada para Atajos de iOS."
+    description="Devuelve una página HTML estilo Apple iOS 26 Liquid Glass con contadores en vivo, optimizada para Atajos de iOS. Soporta autodetección de estación por GPS (lat/lon)."
 )
 def itinerarios_visual(
     request: Request, 
-    origen: str = Query(..., description="Nombre o ID de la estación de origen"),
-    destino: str = Query(..., description="Nombre o ID de la estación de destino"),
+    origen: Optional[str] = Query(None, description="Nombre o ID de la estación de origen"),
+    destino: Optional[str] = Query(None, description="Nombre o ID de la estación de destino"),
+    lat: Optional[float] = Query(None, description="Latitud GPS para autodetección"),
+    lon: Optional[float] = Query(None, description="Longitud GPS para autodetección"),
     fecha: Optional[str] = Query(None, description="Fecha en formato YYYY-MM-DD (default: hoy en Chile)"),
     usuario: Optional[str] = Query("1", description="Tipo de usuario: 1 = General, 2 = Estudiante, 3 = Adulto Mayor")
 ):
+    origen, destino, _ = resolver_origen_destino_geolocalizados(origen, destino, lat, lon)
+
+    if not origen or not destino:
+        contexto = {
+            "request": request, "origen": "Desconocido", "destino": "Desconocido",
+            "origen_id": 0, "destino_id": 0,
+            "hora_actual": "", "fecha_titulo": "", "fecha_raw": "",
+            "es_hoy": False, "error": "Debes especificar origen y destino o enviar coordenadas GPS (lat y lon).",
+            "pasados": [], "proximos": [], "usuario": 1,
+            "usuario_tipo": "General"
+        }
+        return templates.TemplateResponse(request=request, name="visual.html", context=contexto)
+
     resultado = obtener_todos_los_viajes_con_cache(origen, destino, fecha, usuario)
     todos, error, id_org, id_dst, fecha_usada, id_usr = resultado
 
