@@ -205,7 +205,7 @@ def itinerarios_visual(
             "pasados": [], "proximos": [], "usuario": id_usr,
             "usuario_tipo": USUARIOS.get(id_usr, "General")
         }
-        return templates.TemplateResponse("visual.html", contexto)
+        return templates.TemplateResponse(request=request, name="visual.html", context=contexto)
 
     ahora = datetime.now(TZ_CHILE)
     es_hoy = fecha_usada == ahora.strftime("%Y-%m-%d")
@@ -246,4 +246,4 @@ def itinerarios_visual(
         else:
             contexto["proximos"].append(tren)
             
-    return templates.TemplateResponse("visual.html", contexto)
+    return templates.TemplateResponse(request=request, name="visual.html", context=contexto)
